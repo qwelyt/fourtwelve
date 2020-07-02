@@ -2,6 +2,7 @@ showSwitchCut=true;
 showSwitch=true;
 showKeyCap=false;
 showSpaceBox=false;
+fullboard=false;
 space=19.04;
 
 /*[Cherry MX settings]*/
@@ -16,17 +17,18 @@ edgeSpaceAddition = 4;
 edgeSpace = (edgeSpaceAddition*2)-keySpace;
 keyZ = -1;
 
-moduleX = (edgeSpace+edgeSpaceAddition)
-              +(keySpace*keyCols)
+function innerSize(q) = (keySpace*q)
+                        +cherrySize
+                        *(q-1)
+                        +cherrySize;
+function size(q) = (edgeSpace+edgeSpaceAddition)
+              +(keySpace*q)
               +cherrySize
-              *(keyCols-1)
+              *(q-1)
               +cherrySize;
-              
-moduleY = (edgeSpace+edgeSpaceAddition)
-              +(keySpace*keyRows)
-              +cherrySize
-              *(keyRows-1)
-              +cherrySize;
+          
+moduleX = size(keyCols);
+moduleY = size(keyRows);
 moduleZ = 3;
 
 
@@ -90,7 +92,7 @@ module cherryCap(x=0,y=0,z=0, capSize=1, homing=false,rotateCap=false){
 }
 
 // ---- Keyboard basics ----
-module mxSwitchCut(x=0,y=0,z=0,rotateCap=false){
+module mxSwitchCut(x=cherryCutOutSize/1.5,y=cherryCutOutSize/1.5,z=0,rotateCap=false){
   capRotation = rotateCap ? 90 : 0;
   d=14.05;
   p=14.58/2+0.3;
@@ -113,18 +115,18 @@ module mxSwitchCut(x=0,y=0,z=0,rotateCap=false){
   }
 }
 
-//module repeted (yStart, yEnd, xStart, xEnd){
-//  for(y = [yStart:yEnd]){
-//    for(x = [xStart:xEnd]){
-//      translate(position2(x,y,keyZ)) children();
-//    }
-//  }
-//}
 
-module repeted (yStart, yEnd, xStart, xEnd, yStep=1, xStep=1){
-  for(y = [yStart:yStep:yEnd]){
-    for(x = [xStart:xStep:xEnd]){
-      translate(position2(x,y,keyZ)) children();
+
+module repeated (yStart, yEnd, xStart, xEnd, yStep=1, xStep=1){
+//  translate([-size(xEnd)
+//            , -size(yEnd)
+//            , 0
+//            ])
+  union(){
+    for(y = [yStart:yStep:yEnd]){
+      for(x = [xStart:xStep:xEnd]){
+        translate(position2(x,y,keyZ)) children();
+      }
     }
   }
 }
@@ -132,30 +134,65 @@ module repeted (yStart, yEnd, xStart, xEnd, yStep=1, xStep=1){
 ///////////////////////////////
 //  This
 //////////////////////////////
-yS=1;
-yE=4;
-xS=1;
-xE=12;
-ri=3;
-translate([15,15,0]){
+
+ 
+ module full(){
   difference(){
-    translate([-space/1.35,-space/1.35,0])
-      cube([moduleX,moduleY,moduleZ]);
-    
+    cube([innerSize(keyCols),innerSize(keyRows),moduleZ]);
+     
     if(showSwitchCut){
-      translate([0,0,3.5])repeted(yS,yE,xS,xE) mxSwitchCut();
+      translate([0,0,3.5]){
+        repeated(1,keyRows,1,keyCols) mxSwitchCut();
+      }
     }
-    
+  }
+}
+
+module half(){
+  difference(){
+    union(){
+      cube([innerSize((keyCols/2)-1),innerSize(keyRows),moduleZ]);
+      cube([innerSize((keyCols/2)+1),innerSize(keyRows/2),moduleZ]);
+    }
+     
+    if(showSwitchCut){
+      translate([0,0,3.5]){
+        repeated(1,keyRows,1,keyCols) mxSwitchCut();
+      }
+    }
     $fn=30;
     
-    repeted(yS+0.5,yE-0.5,xS+0.5,xE-0.5,2,5)
+    repeated(2,keyRows,3,7,2,4)
     cylinder(h=10,d=mNutD(ri),center=true);
   }
-  if(showSwitch){
-    translate([0,0,3.5])repeted(yS,yE,xS,xE) cherrySwitch();
-  }
-  if(showKeyCap){
-    translate([0,0,3.5])repeted(yS,yE,xS,xE) cherryCap();
+}
+
+ri=3;
+translate([0,0,0]){
+  if(fullboard){
+    yS=1;
+    yE=4;
+    xS=1;
+    xE=12;
+    difference(){
+      full();
+      
+      $fn=30;
+      
+      repeated(yS+0.5,yE-0.5,xS+0.5,xE-0.5,2,5)
+      cylinder(h=10,d=mNutD(ri),center=true);
+    }
+    if(showSwitch){
+      translate([0,0,3.5])repeated(yS,yE,xS,xE) cherrySwitch();
+    }
+    if(showKeyCap){
+      translate([0,0,3.5])repeated(yS,yE,xS,xE) cherryCap();
+    }
+  } else {
+    half();
+//    #translate([innerSize(keyCols),innerSize(keyRows),0])
+//      rotate([0,0,180])
+//      half();
   }
 }
 
