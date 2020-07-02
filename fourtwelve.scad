@@ -13,15 +13,15 @@ cherrySize=14.58;
 keyCols = 12;
 keyRows = 4;
 keySpace = space-cherrySize;
-edgeSpaceAddition = 4;
+edgeSpaceAddition = 3;
 edgeSpace = (edgeSpaceAddition*2)-keySpace;
 keyZ = -1;
 
-function innerSize(q) = (keySpace*q)
+function size(q) = (keySpace*q)
                         +cherrySize
                         *(q-1)
                         +cherrySize;
-function size(q) = (edgeSpace+edgeSpaceAddition)
+function Qsize(q) = (edgeSpace+edgeSpaceAddition)
               +(keySpace*q)
               +cherrySize
               *(q-1)
@@ -31,7 +31,7 @@ moduleX = size(keyCols);
 moduleY = size(keyRows);
 moduleZ = 3;
 
-
+$fn=30;
 
 
 /*[ Printer settings ]*/
@@ -41,17 +41,8 @@ printerSize=[140,140,140];
 // mX: h=mX-1, d= X*(1+((1/3)*2))
 function mNutH(m) = m-1;
 function mNutD(m) = m*(1+((1/3)*2));
-
-function position(x,y,z) = [
-          edgeSpace+keySpace*x+cherrySize*(x-1)-(edgeSpaceAddition/2)
-          , edgeSpace-keySpace+(keySpace)*y+cherrySize*(y-1)-(edgeSpaceAddition/2)
-          , z];
           
-function position2(x,y,z) = [
-                              space*(x-1)
-                              , space*(y-1)
-                              , z
-                            ];
+function position(x,y,z) = [space*(x-1), space*(y-1), z];
 
 
 
@@ -65,10 +56,10 @@ module cherrySwitch(){
 	// Lib: Cherry MX switch - reference
 	// Download here: https://www.thingiverse.com/thing:421524
 	//  p=cherrySize/2+0.53;
-	translate([0,0,13.32])
+	#translate([cherryCutOutSize/1.5,cherryCutOutSize/1.5,13.32])
 		import("switch_mx.stl");
 }
-module cherryCap(x=0,y=0,z=0, capSize=1, homing=false,rotateCap=false){
+module cherryCap(x=cherryCutOutSize/1.36,y=cherryCutOutSize/1.36,z=4, capSize=1, homing=false,rotateCap=false){
 	// Awesome caps created by rsheldiii
 	// Lib: KeyV2: Parametric Mechanical Keycap Library
 	// Download here: https://www.thingiverse.com/thing:2783650
@@ -118,14 +109,10 @@ module mxSwitchCut(x=cherryCutOutSize/1.5,y=cherryCutOutSize/1.5,z=0,rotateCap=f
 
 
 module repeated (yStart, yEnd, xStart, xEnd, yStep=1, xStep=1){
-//  translate([-size(xEnd)
-//            , -size(yEnd)
-//            , 0
-//            ])
   union(){
     for(y = [yStart:yStep:yEnd]){
       for(x = [xStart:xStep:xEnd]){
-        translate(position2(x,y,keyZ)) children();
+        translate(position(x,y,keyZ)) children();
       }
     }
   }
@@ -135,25 +122,34 @@ module repeated (yStart, yEnd, xStart, xEnd, yStep=1, xStep=1){
 //  This
 //////////////////////////////
 
- 
- module full(){
-  difference(){
-    cube([innerSize(keyCols),innerSize(keyRows),moduleZ]);
-     
-    if(showSwitchCut){
-      translate([0,0,3.5]){
-        repeated(1,keyRows,1,keyCols) mxSwitchCut();
-      }
+module roundCorner(h=10,d=10){
+  union(){
+    rotate([0,0,180])difference(){
+      translate([0,0,-0.5])cube([d,d,h+1]);
+      translate([0,0,-1])cylinder(d=d,h=h+2);
     }
   }
 }
 
-module half(){
+module topPlateNoCuts(){
+  union(){
+    cube([size((keyCols/2)-1),size(keyRows),moduleZ]);
+    cube([size((keyCols/2)+1),size(2),moduleZ]);
+    
+    translate([-edgeSpace,size(keyRows),0])
+      cube([size((keyCols/2)-1)+edgeSpace,edgeSpace, moduleZ]);
+    
+    translate([-edgeSpace,-edgeSpace,0])
+      cube([size((keyCols/2)+1)+edgeSpace,edgeSpace, moduleZ]);
+    
+    translate([-edgeSpace,-edgeSpace,0])
+      cube([edgeSpace,size(keyRows)+edgeSpace*2, moduleZ]);
+  }
+}
+
+module top(){
   difference(){
-    union(){
-      cube([innerSize((keyCols/2)-1),innerSize(keyRows),moduleZ]);
-      cube([innerSize((keyCols/2)+1),innerSize(keyRows/2),moduleZ]);
-    }
+    topPlateNoCuts();
      
     if(showSwitchCut){
       translate([0,0,3.5]){
@@ -162,38 +158,71 @@ module half(){
     }
     $fn=30;
     
-    repeated(2,keyRows,3,7,2,4)
-    cylinder(h=10,d=mNutD(ri),center=true);
+    repeated(2,keyRows,2,7,2,5) cylinder(h=10,d=mNutD(ri),center=true);
+    repeated(2,keyRows,4,7,2,5) cylinder(h=10,d=mNutD(ri),center=true);
   }
+  
+  if(showSwitch){
+    translate([0,0,3.5]){
+      repeated(1,keyRows/2,1,keyCols/2+1) cherrySwitch();
+      repeated(keyRows/2,keyRows,1,keyCols/2-1) cherrySwitch();
+    }
+  }
+  if(showKeyCap){
+    translate([0,0,3.5]){
+      repeated(1,keyRows/2,1,keyCols/2+1) cherryCap();
+      repeated(keyRows/2,keyRows,1,keyCols/2-1) cherryCap();
+    }
+  }
+}
+
+module bottom(z=15){
+  difference(){
+    union(){
+      cube([size((keyCols/2)-1),size(keyRows),z]);
+      cube([size((keyCols/2)+1),size(2),z]);
+      
+      translate([-edgeSpace*2,size(keyRows),0])
+        cube([size((keyCols/2)-1)+edgeSpace*2,edgeSpace*2, z]);
+      
+      translate([-edgeSpace*2,-edgeSpace*2,0])
+        cube([size((keyCols/2)+1)+edgeSpace*2,edgeSpace*2, z]);
+      
+      translate([-edgeSpace*2,-edgeSpace*2,0])
+        cube([edgeSpace*2,size(keyRows)+edgeSpace*4, z]);
+    }
+    
+    translate([0,0,moduleZ])union(){
+      cube([size((keyCols/2)-1),size(keyRows),z]);
+      cube([size((keyCols/2)+1),size(2),z]);
+    }
+    translate([1,0,moduleZ])union(){
+      cube([size((keyCols/2)-1),size(keyRows),z]);
+      cube([size((keyCols/2)+1),size(2),z]);
+      translate([0,1,0])cube([size((keyCols/2)+1),size(2),z]);
+    }
+    
+    translate([0,0,z-moduleZ])scale([1,1,1.1])topPlateNoCuts();
+    translate([1,0,z-moduleZ])scale([1,1,1.1])topPlateNoCuts();
+    
+    translate([-0.6,-0.6,0])roundCorner(z,d=5);
+    translate([-0.6,-0.95+size(keyRows)+edgeSpace,0])rotate([0,0,-90])roundCorner(z,d=5);
+  }
+}
+
+module half(){
+  h=11;
+//  translate([0,0,h-moduleZ])top();
+  bottom(h);
 }
 
 ri=3;
 translate([0,0,0]){
-  if(fullboard){
-    yS=1;
-    yE=4;
-    xS=1;
-    xE=12;
-    difference(){
-      full();
-      
-      $fn=30;
-      
-      repeated(yS+0.5,yE-0.5,xS+0.5,xE-0.5,2,5)
-      cylinder(h=10,d=mNutD(ri),center=true);
-    }
-    if(showSwitch){
-      translate([0,0,3.5])repeated(yS,yE,xS,xE) cherrySwitch();
-    }
-    if(showKeyCap){
-      translate([0,0,3.5])repeated(yS,yE,xS,xE) cherryCap();
-    }
-  } else {
-    half();
-//    #translate([innerSize(keyCols),innerSize(keyRows),0])
-//      rotate([0,0,180])
-//      half();
-  }
+  half();
+  
+//#  translate([size(keyCols),size(keyRows),0])rotate([0,0,180])half();
 }
+
+
 
 if(showPrintBox)#cube(printerSize);
