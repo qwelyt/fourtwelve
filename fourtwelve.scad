@@ -131,6 +131,14 @@ module roundCorner(h=10,d=10){
   }
 }
 
+module screwHoles(ri,h){
+  repeated(2,keyRows,2,keyCols/2-1,2,2) 
+    cylinder(h=h,d=mNutD(ri), center=true);
+  
+  repeated(keyRows,keyRows, keyCols/2+1, keyCols/2+1,2,2)
+    cylinder(h=h,d=mNutD(ri),center=true);
+}
+
 module topPlateNoCuts(){
   union(){
     cube([size((keyCols/2)-1),size(keyRows),moduleZ]);
@@ -177,16 +185,23 @@ module top(){
 }
 
 module bottom(z=15){
+  module topPlate(){
+    translate([0,size(keyRows),0])
+      mirror([0,1,])
+        scale([1,1,1.1])
+          topPlateNoCuts();
+  }
   difference(){
     union(){
       cube([size((keyCols/2)-1),size(keyRows),z]);
-      cube([size((keyCols/2)+1),size(2),z]);
+      translate([0,size(keyRows/2),0])
+        cube([size((keyCols/2)+1),size(keyRows/2),z]);
       
       translate([-edgeSpace*2,size(keyRows),0])
-        cube([size((keyCols/2)-1)+edgeSpace*2,edgeSpace*2, z]);
+        cube([size((keyCols/2)+1)+edgeSpace*2,edgeSpace*2, z]);
       
       translate([-edgeSpace*2,-edgeSpace*2,0])
-        cube([size((keyCols/2)+1)+edgeSpace*2,edgeSpace*2, z]);
+        cube([size((keyCols/2)-1)+edgeSpace*2,edgeSpace*2, z]);
       
       translate([-edgeSpace*2,-edgeSpace*2,0])
         cube([edgeSpace*2,size(keyRows)+edgeSpace*4, z]);
@@ -194,25 +209,38 @@ module bottom(z=15){
     
     translate([0,0,moduleZ])union(){
       cube([size((keyCols/2)-1),size(keyRows),z]);
-      cube([size((keyCols/2)+1),size(2),z]);
+      translate([0,size(keyRows/2),0])
+        cube([size((keyCols/2)+1),size(2),z]);
     }
     translate([1,0,moduleZ])union(){
       cube([size((keyCols/2)-1),size(keyRows),z]);
-      cube([size((keyCols/2)+1),size(2),z]);
-      translate([0,1,0])cube([size((keyCols/2)+1),size(2),z]);
+      translate([0,size(keyRows/2),0])
+        cube([size((keyCols/2)+1),size(2),z]);
+      translate([0,1,0])
+        cube([size((keyCols/2)+1),size(2),z]);
     }
     
-    translate([0,0,z-moduleZ])scale([1,1,1.1])topPlateNoCuts();
-    translate([1,0,z-moduleZ])scale([1,1,1.1])topPlateNoCuts();
+    translate([0,0,z-moduleZ])topPlate();
+    translate([1,0,z-moduleZ])topPlate();
     
     translate([-0.6,-0.6,0])roundCorner(z,d=5);
-    translate([-0.6,-0.95+size(keyRows)+edgeSpace,0])rotate([0,0,-90])roundCorner(z,d=5);
+    translate([-0.6,-0.95+size(keyRows)+edgeSpace,0])
+      rotate([0,0,-90])
+        roundCorner(z,d=5);
+  }
+
+  mZ = z-moduleZ;
+  translate([0,0,mZ-moduleZ]){
+    difference(){
+      screwHoles(ri*1.7,mZ);
+      screwHoles(ri,mZ*2);
+    }
   }
 }
 
 module half(){
   h=11;
-//  translate([0,0,h-moduleZ])top();
+  translate([0,0,h-moduleZ])top();
   bottom(h);
 }
 
@@ -220,7 +248,7 @@ ri=3;
 translate([0,0,0]){
   half();
   
-//#  translate([size(keyCols),size(keyRows),0])rotate([0,0,180])half();
+//  translate([size(keyCols),size(keyRows),0])rotate([0,0,180])half();
 }
 
 
