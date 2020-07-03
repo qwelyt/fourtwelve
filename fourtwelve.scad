@@ -32,6 +32,7 @@ moduleY = size(keyRows);
 moduleZ = 3;
 
 $fn=30;
+mSize=3;
 
 
 /*[ Printer settings ]*/
@@ -41,6 +42,9 @@ printerSize=[140,140,140];
 // mX: h=mX-1, d= X*(1+((1/3)*2))
 function mNutH(m) = m-1;
 function mNutD(m) = m*(1+((1/3)*2));
+function mScrewheadH(m) = m-1;
+function mScrewheadD(m) = m+2; // This is most probably not correct, but works for m3
+
           
 function position(x,y,z) = [space*(x-1), space*(y-1), z];
 
@@ -131,12 +135,23 @@ module roundCorner(h=10,d=10){
   }
 }
 
-module screwHoles(ri,h){
+module screwHoles(ri,h,ri2,wedgeHole=false){
+  ri2 = is_undef(ri2) ? ri : ri2;
   repeated(2,keyRows,2,keyCols/2-1,2,2) 
-    cylinder(h=h,d=mNutD(ri), center=true);
+    cylinder(h=h,d1=ri2,d2=ri, center=true);
   
-  repeated(keyRows,keyRows, keyCols/2+1, keyCols/2+1,2,2)
-    cylinder(h=h,d=mNutD(ri),center=true);
+  if(wedgeHole){
+    repeated(keyRows,keyRows, keyCols/2+1, keyCols/2+1,2,2)
+      cylinder(h=h,d1=ri2,d2=ri,center=true);
+  }
+}
+
+module points(wedge=false){
+  repeated(2,keyRows,2,keyCols/2-1,2,2) children();
+  
+  if(wedge){
+    repeated(keyRows,keyRows, keyCols/2+1, keyCols/2+1,2,2) children();
+  }
 }
 
 module topPlateNoCuts(){
@@ -164,10 +179,10 @@ module top(){
         repeated(1,keyRows,1,keyCols) mxSwitchCut();
       }
     }
-    $fn=30;
+
     
-    repeated(2,keyRows,2,7,2,5) cylinder(h=10,d=mNutD(ri),center=true);
-    repeated(2,keyRows,4,7,2,5) cylinder(h=10,d=mNutD(ri),center=true);
+    repeated(2,keyRows,2,7,2,5) cylinder(h=10,d=mSize*1.2,center=true);
+    repeated(2,keyRows,4,7,2,5) cylinder(h=10,d=mSize*1.2,center=true);
   }
   
   if(showSwitch){
@@ -191,66 +206,110 @@ module bottom(z=15){
         scale([1,1,1.1])
           topPlateNoCuts();
   }
+  union(){
+    difference(){
+      union(){
+        cube([size((keyCols/2)-1),size(keyRows),z]);
+        translate([0,size(keyRows/2),0])
+          cube([size((keyCols/2)+1),size(keyRows/2),z]);
+        
+        translate([-edgeSpace*2,size(keyRows),0])
+          cube([size((keyCols/2)+1)+edgeSpace*2,edgeSpace*2, z]);
+        
+        translate([-edgeSpace*2,-edgeSpace*2,0])
+          cube([size((keyCols/2)-1)+edgeSpace*2,edgeSpace*2, z]);
+        
+        translate([-edgeSpace*2,-edgeSpace*2,0])
+          cube([edgeSpace*2,size(keyRows)+edgeSpace*4, z]);
+      }
+      
+      translate([0,0,moduleZ])union(){
+        cube([size((keyCols/2)-1),size(keyRows),z]);
+        translate([0,size(keyRows/2),0])
+          cube([size((keyCols/2)+1),size(2),z]);
+      }
+      translate([1,0,moduleZ])union(){
+        cube([size((keyCols/2)-1),size(keyRows),z]);
+        translate([0,size(keyRows/2),0])
+          cube([size((keyCols/2)+1),size(2),z]);
+        translate([0,1,0])
+          cube([size((keyCols/2)+1),size(2),z]);
+      }
+      
+      translate([0,0,z-moduleZ])topPlate();
+      translate([1,0,z-moduleZ])topPlate();
+      
+      translate([-0.6,-0.6,0])roundCorner(z,d=5);
+      translate([-0.6,-0.95+size(keyRows)+edgeSpace,0])
+        rotate([0,0,-90])
+          roundCorner(z,d=5);
+      
+      points(true)cylinder(d=mSize,h=10,center=true);
+      translate([0,0,mNutH(mSize)/2.1])
+        points(true)
+        cylinder(d=mNutD(mSize),h=mNutH(mSize),center=false);
+      
+      connector(z,2);
+    }
+    translate([0,0,moduleZ])points(false)mount(z-moduleZ*2);
+  }
+}
+
+module mount(h,m=mSize){
+  translate([0,0,h/4])
   difference(){
     union(){
-      cube([size((keyCols/2)-1),size(keyRows),z]);
-      translate([0,size(keyRows/2),0])
-        cube([size((keyCols/2)+1),size(keyRows/2),z]);
-      
-      translate([-edgeSpace*2,size(keyRows),0])
-        cube([size((keyCols/2)+1)+edgeSpace*2,edgeSpace*2, z]);
-      
-      translate([-edgeSpace*2,-edgeSpace*2,0])
-        cube([size((keyCols/2)-1)+edgeSpace*2,edgeSpace*2, z]);
-      
-      translate([-edgeSpace*2,-edgeSpace*2,0])
-        cube([edgeSpace*2,size(keyRows)+edgeSpace*4, z]);
+      translate([0,0,h/4])cylinder(h=h,d=m*2,center=true);
+      cylinder(h=h/2,d1=m*4,d2=m*2,center=true);
     }
-    
-    translate([0,0,moduleZ])union(){
-      cube([size((keyCols/2)-1),size(keyRows),z]);
-      translate([0,size(keyRows/2),0])
-        cube([size((keyCols/2)+1),size(2),z]);
-    }
-    translate([1,0,moduleZ])union(){
-      cube([size((keyCols/2)-1),size(keyRows),z]);
-      translate([0,size(keyRows/2),0])
-        cube([size((keyCols/2)+1),size(2),z]);
-      translate([0,1,0])
-        cube([size((keyCols/2)+1),size(2),z]);
-    }
-    
-    translate([0,0,z-moduleZ])topPlate();
-    translate([1,0,z-moduleZ])topPlate();
-    
-    translate([-0.6,-0.6,0])roundCorner(z,d=5);
-    translate([-0.6,-0.95+size(keyRows)+edgeSpace,0])
-      rotate([0,0,-90])
-        roundCorner(z,d=5);
+    translate([0,0,h/4])cylinder(h=h+2,d=m,center=true);
   }
+}
 
-  mZ = z-moduleZ;
-  translate([0,0,mZ-moduleZ]){
+module connector(h,extra=0){
+  module T(){
     difference(){
-      screwHoles(ri*1.7,mZ);
-      screwHoles(ri,mZ*2);
+      translate([size(keyCols/2-0.5),0,0]){
+        union(){
+          translate([0,0,moduleZ/2-extra/2]){
+            translate([-extra/2,size(2),0])
+              cube([size(1)+extra,size((keyRows/2)/2),moduleZ/2+extra]);
+            
+            translate([-size(0.25)-extra/2,size(keyRows-1.5)-extra/2,0])
+              cube([size(1.5)+extra,size(1)+extra,moduleZ/2+extra]);
+          }
+          translate([size(0.5),size(3),moduleZ])mount(h-moduleZ*2);  
+        }
+      }
+      points(true)cylinder(d=mSize,h=10,center=true);
+        translate([0,0,mNutH(mSize)/2.1])
+          points(true)
+          cylinder(d=mNutD(mSize),h=mNutH(mSize),center=false);
     }
   }
+  T();
+  translate([0,size(4),0])mirror([0,1,0])T();
 }
 
 module half(){
-  h=11;
-  translate([0,0,h-moduleZ])top();
+  h=15;
+//  #translate([0,0,h-moduleZ])top();
   bottom(h);
 }
 
-ri=3;
+
 translate([0,0,0]){
   half();
+  
+  connector(15);
+//  translate([40,-10,0])connector(15,1);
+//  mount(h=15,m=mSize);
   
 //  translate([size(keyCols),size(keyRows),0])rotate([0,0,180])half();
 }
 
+//echo(3);
+//echo(mNutD(6));
 
 
 if(showPrintBox)#cube(printerSize);
