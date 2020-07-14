@@ -42,6 +42,7 @@ printerSize=[140,140,140];
 // mX: h=mX-1, d= X*(1+((1/3)*2))
 function mNutH(m) = m-1;
 function mNutD(m) = m*(1+((1/3)*2));
+function mNutDHole(m) = mNutD(m)+1;
 function mScrewheadH(m) = m-1;
 function mScrewheadD(m) = m+2; // This is most probably not correct, but works for m3
 
@@ -84,6 +85,38 @@ module cherryCap(x=cherryCutOutSize/1.36,y=cherryCutOutSize/1.36,z=4, capSize=1,
     rotate([0,0,capRotation])
 			import("keycap-dsa-1.25-row3-cherry.stl");
 	}
+}
+
+module proMicro(pins=true){
+  #translate([size(2),size(keyRows-1)+2.2,moduleZ-0.6])
+  if(pins){
+    import("pro-micro_wpins.stl");
+  } else {
+    import("pro-micro.stl");
+  }
+}
+
+module proMicroHolder(type="holder"){
+  translate([size(2),size(keyRows-1)+2.7,moduleZ-0.3])
+  if(type == "holder"){
+    difference(){
+      import("pro-micro-holder_base.stl");
+//      translate([0,-2.25,1.5])cube([23,38.5,3],center=true);
+    }
+  } else if(type == "cutout"){
+    union(){
+      translate([0,0,0.9])cube([19,33.7,4], center=true);
+      translate([-7.3,0,-1.5])cube([4.5,33.7,2], center=true);
+      translate([7.3,0,-1.5])cube([4.5,33.7,2], center=true);
+      translate([0,17,2])cube([8,3,3], center=true);
+      translate([0,-20,-1])cube([23,2.3,3],center=true);
+    }
+  } else if(type == "lid"){
+    union(){
+      translate([0,-3,2.8])cube([10,32,1],center=true);
+      translate([0,-18,2])cube([22,2,2.6],center=true);
+    }
+  }
 }
 
 // ---- Keyboard basics ----
@@ -159,14 +192,16 @@ module topPlateNoCuts(){
     cube([size((keyCols/2)-1),size(keyRows),moduleZ]);
     cube([size((keyCols/2)+1),size(2),moduleZ]);
     
-    translate([-edgeSpace,size(keyRows),0])
-      cube([size((keyCols/2)-1)+edgeSpace,edgeSpace, moduleZ]);
+    translate([0,size(keyRows),0])
+      cube([size((keyCols/2)-1),edgeSpace, moduleZ]);
     
-    translate([-edgeSpace,-edgeSpace,0])
-      cube([size((keyCols/2)+1)+edgeSpace,edgeSpace, moduleZ]);
+    translate([0,-edgeSpace,0])
+      cube([size((keyCols/2)+1),edgeSpace, moduleZ]);
     
-    translate([-edgeSpace,-edgeSpace,0])
-      cube([edgeSpace,size(keyRows)+edgeSpace*2, moduleZ]);
+    
+      translate([-edgeSpace,-edgeSpace,0])
+        cube([edgeSpace,size(keyRows)+edgeSpace*2, moduleZ]);
+    
   }
 }
 
@@ -206,6 +241,10 @@ module bottom(z=15){
         scale([1,1,1.1])
           topPlateNoCuts();
   }
+  module latch(extra=0){
+    translate([(size(1)+extra)/2,(1.5+extra)/2,(z/2+extra)/2])
+      cube([size(1)+extra,1.5+extra,z/2+extra],center=true);
+  }
   union(){
     difference(){
       union(){
@@ -221,6 +260,8 @@ module bottom(z=15){
         
         translate([-edgeSpace*2,-edgeSpace*2,0])
           cube([edgeSpace*2,size(keyRows)+edgeSpace*4, z]);
+        
+        translate([size(keyCols/2-1),-1.5,moduleZ])latch(0);
       }
       
       translate([0,0,moduleZ])union(){
@@ -244,14 +285,54 @@ module bottom(z=15){
         rotate([0,0,-90])
           roundCorner(z,d=5);
       
+      // side
+      translate([0,size(keyRows+0.5),3.08])
+        rotate([90,0,0])
+          translate([-0.6,-0.6,0])
+            roundCorner(size(keyRows+1),d=5);
+      
+      translate([0,size(keyRows+0.5),z-3.08])
+        rotate([90,90,0])
+          translate([-0.6,-0.6,0])
+            roundCorner(size(keyRows+1),d=5);
+      
+      // front
+      translate([-size(1),0,3.08])
+        rotate([90,0,90])
+          translate([-0.6,-0.6,0])
+            roundCorner(size(keyCols/2+1),d=5);
+      
+      translate([-size(1),0,z-3.08])
+        rotate([90,90,90])
+          translate([-0.6,-0.6,0])
+            roundCorner(size(keyCols/2+1),d=5);
+      
+      // back
+      translate([size(keyCols/2+2),size(keyRows),3.08])
+        rotate([90,0,270])
+          translate([-0.6,-0.6,0])
+            roundCorner(size(keyCols/2+3),d=5);
+            
+      translate([size(keyCols/2+2),size(keyRows),z-3.08])
+        rotate([90,90,270])
+          translate([-0.6,-0.6,0])
+            roundCorner(size(keyCols/2+3),d=5);
+      
+      
       points(true)cylinder(d=mSize,h=10,center=true);
       translate([0,0,mNutH(mSize)/2.1])
         points(true)
-        cylinder(d=mNutD(mSize),h=mNutH(mSize),center=false);
+        cylinder(d=mNutDHole(mSize),h=mNutH(mSize),center=false,$fn=6);
+//        echo(mNutD(mSize));
       
-      connector(z,2);
+      connector(z,1);
+      
+      translate([size(keyCols/2)-0.49,size(keyRows),moduleZ])latch(0.5);
+      proMicroHolder("cutout");
     }
+//    translate([0,0,-1])proMicroHolder("lid");
     translate([0,0,moduleZ])points(false)mount(z-moduleZ*2);
+    
   }
 }
 
@@ -267,16 +348,17 @@ module mount(h,m=mSize){
 }
 
 module connector(h,extra=0){
+  z = (moduleZ/2)+extra;
   module T(){
     difference(){
       translate([size(keyCols/2-0.5),0,0]){
         union(){
           translate([0,0,moduleZ/2-extra/2]){
             translate([-extra/2,size(2),0])
-              cube([size(1)+extra,size((keyRows/2)/2),moduleZ/2+extra]);
+              cube([size(1)+extra,size((keyRows/2)/2),z]);
             
             translate([-size(0.25)-extra/2,size(keyRows-1.5)-extra/2,0])
-              cube([size(1.5)+extra,size(1)+extra,moduleZ/2+extra]);
+              cube([size(1.5)+extra,size(1)+extra,z]);
           }
           translate([size(0.5),size(3),moduleZ])mount(h-moduleZ*2);  
         }
@@ -284,24 +366,23 @@ module connector(h,extra=0){
       points(true)cylinder(d=mSize,h=10,center=true);
         translate([0,0,mNutH(mSize)/2.1])
           points(true)
-          cylinder(d=mNutD(mSize),h=mNutH(mSize),center=false);
+          cylinder(d=mNutDHole(mSize),h=mNutH(mSize),center=false,$fn=6);
     }
   }
   T();
   translate([0,size(4),0])mirror([0,1,0])T();
 }
 
-module half(){
-  h=15;
-//  #translate([0,0,h-moduleZ])top();
+module half(h){
+//  translate([0,0,h-moduleZ])top();
   bottom(h);
 }
 
 
 translate([0,0,0]){
-  half();
+  half(15);
   
-  connector(15);
+//  connector(15);
 //  translate([40,-10,0])connector(15,1);
 //  mount(h=15,m=mSize);
   
@@ -313,3 +394,7 @@ translate([0,0,0]){
 
 
 if(showPrintBox)#cube(printerSize);
+//proMicro(false);
+//proMicro();
+//#proMicroHolder();
+//proMicroHolder("cutout");
