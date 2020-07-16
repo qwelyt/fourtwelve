@@ -42,7 +42,7 @@ printerSize=[140,140,140];
 // mX: h=mX-1, d= X*(1+((1/3)*2))
 function mNutH(m) = m-1;
 function mNutD(m) = m*(1+((1/3)*2));
-function mNutDHole(m) = mNutD(m)+1;
+function mNutDHole(m) = mNutD(m)+2;
 function mScrewheadH(m) = m-1;
 function mScrewheadD(m) = m+2; // This is most probably not correct, but works for m3
 
@@ -97,7 +97,7 @@ module proMicro(pins=true){
 }
 
 module proMicroHolder(type="holder"){
-  translate([size(2),size(keyRows-1)+2.7,moduleZ-0.3])
+  translate([size(2),size(keyRows-1)+2.7,moduleZ])
   if(type == "holder"){
     difference(){
       import("pro-micro-holder_base.stl");
@@ -106,10 +106,10 @@ module proMicroHolder(type="holder"){
   } else if(type == "cutout"){
     union(){
       translate([0,0,0.9])cube([19,33.7,4], center=true);
-      translate([-7.3,0,-1.5])cube([4.5,33.7,2], center=true);
-      translate([7.3,0,-1.5])cube([4.5,33.7,2], center=true);
+      translate([-7.3,0,-1.2])cube([4.5,33.7,2], center=true);
+      translate([7.3,0,-1.2])cube([4.5,33.7,2], center=true);
       translate([0,17,2])cube([8,3,3], center=true);
-      translate([0,-20,-1])cube([23,2.3,3],center=true);
+      translate([0,-20,-0.5])cube([23,3.3,3],center=true);
     }
   } else if(type == "lid"){
     union(){
@@ -180,7 +180,7 @@ module screwHoles(ri,h,ri2,wedgeHole=false){
 }
 
 module points(wedge=false){
-  repeated(2,keyRows,2,keyCols/2-1,2,2) children();
+  repeated(keyRows/2+1,keyRows,4,keyCols/2-1,2,3) children();
   
   if(wedge){
     repeated(keyRows,keyRows, keyCols/2+1, keyCols/2+1,2,2) children();
@@ -188,20 +188,29 @@ module points(wedge=false){
 }
 
 module topPlateNoCuts(){
-  union(){
-    cube([size((keyCols/2)-1),size(keyRows),moduleZ]);
-    cube([size((keyCols/2)+1),size(2),moduleZ]);
-    
-    translate([0,size(keyRows),0])
-      cube([size((keyCols/2)-1),edgeSpace, moduleZ]);
-    
-    translate([0,-edgeSpace,0])
-      cube([size((keyCols/2)+1),edgeSpace, moduleZ]);
-    
-    
+  difference(){
+    union(){
+      cube([size((keyCols/2)-1),size(keyRows),moduleZ]);
+      translate(position(1,keyRows/2+1,0))cube([size((keyCols/2)+1),size(keyRows/2),moduleZ]);
+      
+      translate([0,size(keyRows),0])
+        cube([size((keyCols/2)+1),edgeSpace, moduleZ]);
+      
+      translate([0,-edgeSpace,0])
+        cube([size((keyCols/2)-1),edgeSpace, moduleZ]);
+      
+      
       translate([-edgeSpace,-edgeSpace,0])
         cube([edgeSpace,size(keyRows)+edgeSpace*2, moduleZ]);
+      
+      translate(position(keyCols/2,1,0))
+        translate([0,-edgeSpace,0])
+          cube([2,size(2)+edgeSpace,moduleZ/2]);
+    }
     
+    translate(position(keyCols/2+2,3,0))
+      translate([-2,0,0])
+        cube([2,size(2)+edgeSpace,moduleZ/2]);
   }
 }
 
@@ -214,10 +223,13 @@ module top(){
         repeated(1,keyRows,1,keyCols) mxSwitchCut();
       }
     }
-
     
-    repeated(2,keyRows,2,7,2,5) cylinder(h=10,d=mSize*1.2,center=true);
-    repeated(2,keyRows,4,7,2,5) cylinder(h=10,d=mSize*1.2,center=true);
+    points(true){
+      cylinder(h=10,d=mSize*1.1,center=true);
+      translate([0,0,moduleZ-0.5])cylinder(h=2.2, d1=mSize*1.1, d2=mNutD(mSize)*1.21,center=true);
+      translate([0,0,moduleZ+1.1])cylinder(h=1.01,d=mNutD(mSize)*1.21,center=true);
+    }
+    
   }
   
   if(showSwitch){
@@ -236,103 +248,99 @@ module top(){
 
 module bottom(z=15){
   module topPlate(){
-    translate([0,size(keyRows),0])
-      mirror([0,1,])
-        scale([1,1,1.1])
-          topPlateNoCuts();
+    scale([1,1,1.1])topPlateNoCuts();
   }
-  module latch(extra=0){
+  module latch(extra=0,extraV=0){
     translate([(size(1)+extra)/2,(1.5+extra)/2,(z/2+extra)/2])
-      cube([size(1)+extra,1.5+extra,z/2+extra],center=true);
+      cube([size(1)+extra,1.5+extra,z/3+extra+extraV],center=true);
   }
-  union(){
-    difference(){
-      union(){
-        cube([size((keyCols/2)-1),size(keyRows),z]);
-        translate([0,size(keyRows/2),0])
-          cube([size((keyCols/2)+1),size(keyRows/2),z]);
-        
-        translate([-edgeSpace*2,size(keyRows),0])
-          cube([size((keyCols/2)+1)+edgeSpace*2,edgeSpace*2, z]);
-        
-        translate([-edgeSpace*2,-edgeSpace*2,0])
-          cube([size((keyCols/2)-1)+edgeSpace*2,edgeSpace*2, z]);
-        
-        translate([-edgeSpace*2,-edgeSpace*2,0])
-          cube([edgeSpace*2,size(keyRows)+edgeSpace*4, z]);
-        
-        translate([size(keyCols/2-1),-1.5,moduleZ])latch(0);
-      }
-      
-      translate([0,0,moduleZ])union(){
-        cube([size((keyCols/2)-1),size(keyRows),z]);
-        translate([0,size(keyRows/2),0])
-          cube([size((keyCols/2)+1),size(2),z]);
-      }
-      translate([1,0,moduleZ])union(){
-        cube([size((keyCols/2)-1),size(keyRows),z]);
-        translate([0,size(keyRows/2),0])
-          cube([size((keyCols/2)+1),size(2),z]);
-        translate([0,1,0])
-          cube([size((keyCols/2)+1),size(2),z]);
-      }
-      
-      translate([0,0,z-moduleZ])topPlate();
-      translate([1,0,z-moduleZ])topPlate();
-      
-      translate([-0.6,-0.6,0])roundCorner(z,d=5);
-      translate([-0.6,-0.95+size(keyRows)+edgeSpace,0])
-        rotate([0,0,-90])
-          roundCorner(z,d=5);
-      
-      // side
-      translate([0,size(keyRows+0.5),3.08])
-        rotate([90,0,0])
-          translate([-0.6,-0.6,0])
-            roundCorner(size(keyRows+1),d=5);
-      
-      translate([0,size(keyRows+0.5),z-3.08])
-        rotate([90,90,0])
-          translate([-0.6,-0.6,0])
-            roundCorner(size(keyRows+1),d=5);
-      
-      // front
-      translate([-size(1),0,3.08])
-        rotate([90,0,90])
-          translate([-0.6,-0.6,0])
-            roundCorner(size(keyCols/2+1),d=5);
-      
-      translate([-size(1),0,z-3.08])
-        rotate([90,90,90])
-          translate([-0.6,-0.6,0])
-            roundCorner(size(keyCols/2+1),d=5);
-      
-      // back
-      translate([size(keyCols/2+2),size(keyRows),3.08])
-        rotate([90,0,270])
-          translate([-0.6,-0.6,0])
-            roundCorner(size(keyCols/2+3),d=5);
-            
-      translate([size(keyCols/2+2),size(keyRows),z-3.08])
-        rotate([90,90,270])
-          translate([-0.6,-0.6,0])
-            roundCorner(size(keyCols/2+3),d=5);
-      
-      
-      points(true)cylinder(d=mSize,h=10,center=true);
-      translate([0,0,mNutH(mSize)/2.1])
-        points(true)
-        cylinder(d=mNutDHole(mSize),h=mNutH(mSize),center=false,$fn=6);
-//        echo(mNutD(mSize));
-      
-      connector(z,1);
-      
-      translate([size(keyCols/2)-0.49,size(keyRows),moduleZ])latch(0.5);
-      proMicroHolder("cutout");
-    }
-//    translate([0,0,-1])proMicroHolder("lid");
-    translate([0,0,moduleZ])points(false)mount(z-moduleZ*2);
+  
+  module rounding(){
+    translate([-0.6,-0.6,0])roundCorner(z,d=5);
     
+    translate([-0.6,-0.95+size(keyRows)+edgeSpace,0])
+      rotate([0,0,-90])
+        roundCorner(z,d=5);
+    
+    // side
+    translate([0,size(keyRows+0.5),3.08])
+      rotate([90,0,0])
+        translate([-0.6,-0.6,0])
+          roundCorner(size(keyRows+1),d=5);
+    
+    translate([0,size(keyRows+0.5),z-3.08])
+      rotate([90,90,0])
+        translate([-0.6,-0.6,0])
+          roundCorner(size(keyRows+1),d=5);
+    
+    // front
+    translate([-size(1),0,3.08])
+      rotate([90,0,90])
+        translate([-0.6,-0.6,0])
+          roundCorner(size(keyCols/2+1),d=5);
+    
+    translate([-size(1),0,z-3.08])
+      rotate([90,90,90])
+        translate([-0.6,-0.6,0])
+          roundCorner(size(keyCols/2+1),d=5);
+    
+    // back
+    translate([size(keyCols/2+2),size(keyRows),3.08])
+      rotate([90,0,270])
+        translate([-0.6,-0.6,0])
+          roundCorner(size(keyCols/2+3),d=5);
+          
+    translate([size(keyCols/2+2),size(keyRows),z-3.08])
+      rotate([90,90,270])
+        translate([-0.6,-0.6,0])
+          roundCorner(size(keyCols/2+3),d=5);
+  }
+  
+  difference(){
+    union(){
+      difference(){
+        union(){
+          cube([size((keyCols/2)-1),size(keyRows),z]);
+          translate([0,size(keyRows/2),0])
+            cube([size((keyCols/2)+1),size(keyRows/2),z]);
+          
+          translate([-edgeSpace*2,size(keyRows),0])
+            cube([size((keyCols/2)+1)+edgeSpace*2,edgeSpace*2, z]);
+          
+          translate([-edgeSpace*2,-edgeSpace*2,0])
+            cube([size((keyCols/2)-1)+edgeSpace*2,edgeSpace*2, z]);
+          
+          translate([-edgeSpace*2,-edgeSpace*2,0])
+            cube([edgeSpace*2,size(keyRows)+edgeSpace*4, z]);
+          
+          translate([size(keyCols/2-1),-1.5,moduleZ])latch(0);
+        }
+        
+        translate([0,0,moduleZ])union(){
+          cube([size((keyCols/2)-1),size(keyRows),z]);
+          translate([0,size(keyRows/2),0])
+            cube([size((keyCols/2)+1),size(2),z]);
+        }
+
+        
+        translate([0,0,z-moduleZ])topPlate();
+        translate([3,0,z-moduleZ])topPlate();
+        
+        rounding();
+        
+        
+        translate([size(keyCols/2)-0.49,size(keyRows),moduleZ])latch(extra=1,extraV=1);
+        
+        proMicroHolder("cutout");
+        
+        translate(position(keyCols/2+1.38,3,moduleZ/2))cube([size(0.62),size(keyRows/2),moduleZ/2]);
+      }
+      translate(position(keyCols/2,1,moduleZ/2))cube([size(0.6),size(keyRows/2),moduleZ/2]);
+      
+      translate([0,0,moduleZ])points(true)mount(z-moduleZ*1.75);
+    }
+    points(true)cylinder(d=mNutDHole(mSize),h=6,$fn=6);
+    translate([size(0),size(3),-2])cube([40,40,20]);
   }
 }
 
@@ -347,34 +355,9 @@ module mount(h,m=mSize){
   }
 }
 
-module connector(h,extra=0){
-  z = (moduleZ/2)+extra;
-  module T(){
-    difference(){
-      translate([size(keyCols/2-0.5),0,0]){
-        union(){
-          translate([0,0,moduleZ/2-extra/2]){
-            translate([-extra/2,size(2),0])
-              cube([size(1)+extra,size((keyRows/2)/2),z]);
-            
-            translate([-size(0.25)-extra/2,size(keyRows-1.5)-extra/2,0])
-              cube([size(1.5)+extra,size(1)+extra,z]);
-          }
-          translate([size(0.5),size(3),moduleZ])mount(h-moduleZ*2);  
-        }
-      }
-      points(true)cylinder(d=mSize,h=10,center=true);
-        translate([0,0,mNutH(mSize)/2.1])
-          points(true)
-          cylinder(d=mNutDHole(mSize),h=mNutH(mSize),center=false,$fn=6);
-    }
-  }
-  T();
-  translate([0,size(4),0])mirror([0,1,0])T();
-}
 
 module half(h){
-//  translate([0,0,h-moduleZ])top();
+//  translate([0,size(keyRows),h-moduleZ])mirror([0,1,0])top();
   bottom(h);
 }
 
@@ -386,7 +369,7 @@ translate([0,0,0]){
 //  translate([40,-10,0])connector(15,1);
 //  mount(h=15,m=mSize);
   
-//  translate([size(keyCols),size(keyRows),0])rotate([0,0,180])half();
+//  translate([size(keyCols),size(keyRows),0])rotate([0,0,180])half(15);
 }
 
 //echo(3);
