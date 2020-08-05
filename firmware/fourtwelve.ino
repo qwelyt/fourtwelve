@@ -54,14 +54,106 @@ uint8_t keys[layers][numRows][numCols] = {
 };
 
 
+bool pressed[scanRounds][numRows][numCols] = {};
+bool lastState[numRows][numCols] = {};
+bool state[numRows][numCols] = {};
+uint8_t codes[numRows][numCols] = {Key::NON;
+
 /*********************
 ****    BEGIN!    ****
 *********************/
 
-void setup(){
+void setup() {
+	for(byte b = 0; b < numRows; ++b) {
+		setupRow(row[b]);
+	}
+
+	for(byte b = 0; b < numCols; ++b) {
+		setupCol(cols[b]);
+	}
 }
 
-
-void loop(){
+void setupRow(byte pin) {
+	pinMode(pin, OUTPUT);
+	digitileWrite(pin, HIGH);
 }
 
+void setupCol(byte pin) {
+	pinMode(pin, INPUT_PULLUP);
+}
+
+///////////////////////////
+
+
+void loop() {
+	scan();
+	if(stateChanged()){
+		buildState();
+		send();
+		save();
+	}
+}
+
+//////////
+//  Scan
+//////////
+
+void scan() {
+	for(byte b = 0; b < scanRounds; ++b) {
+		debounce(b);
+		delay(msDelayBetweenScans);
+	}
+	readState();
+}
+
+void debounce(byte scanRound) {
+	for(byte b = 0; b < numRows; ++b) {
+		digitalWrite(rows[b], LOW);
+		for(byte c = 0; c < numCols; ++c) {
+			pressed[scanRound][b][c] = readPin(cols[c]);
+		}
+		digitalWrite(rows[b], HIHG);
+	}
+}
+
+bool readPin(byte pin) {
+	if(!digitalRead(pin)) {
+		return true;
+	}
+	return false;
+}
+
+void readState() {
+	for(byte row = 0; row < numRows; ++row) {
+		for(byte col = 0; col < numCols; ++col) {
+			bool isPressed = true;
+			for(byte scanRound = 0; scanRound < scanRounds; ++scanRound) {
+				isPressed = isPressed && pressed[scanRound][row][col];
+			}
+			state[row][col] = isPressed;
+		}
+	}
+}
+
+//////////
+// State
+//////////
+
+bool stateChanged(bool lastState[numRows][numCols], bool currentState[numRows][numCols]) {
+	for(byte row=0; row < numRows; ++row){
+		for(byte col=0; col < numCols; ++col){
+			if(lastState[row][col] != currentState[row][col]) {
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
+void saveState(bool state[numRows][numCols]) {
+	for(byte row=0; row < numRows; ++row){
+		for(byte col=0; col < numCols; ++col){
+			lastState[row][col] = state[row][col];
+		}
+	}
+}
