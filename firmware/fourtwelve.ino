@@ -100,19 +100,19 @@ void loop() {
 
 void scan() {
 	for(byte b = 0; b < scanRounds; ++b) {
-		debounce(b);
+		debounce(b, &pressed);
 		delay(msDelayBetweenScans);
 	}
-	readState();
+	readState(&state);
 }
 
-void debounce(byte scanRound) {
-	for(byte b = 0; b < numRows; ++b) {
-		digitalWrite(rows[b], LOW);
-		for(byte c = 0; c < numCols; ++c) {
-			pressed[scanRound][b][c] = readPin(cols[c]);
+void debounce(byte scanRound, bool *pressed) {
+	for(byte row = 0; row < numRows; ++row) {
+		digitalWrite(rows[row], LOW);
+		for(byte col = 0; col < numCols; ++col) {
+			pressed[scanRound][row][col] = readPin(cols[col]);
 		}
-		digitalWrite(rows[b], HIHG);
+		digitalWrite(rows[row], HIGH);
 	}
 }
 
@@ -123,7 +123,7 @@ bool readPin(byte pin) {
 	return false;
 }
 
-void readState() {
+void readState(bool *state) {
 	for(byte row = 0; row < numRows; ++row) {
 		for(byte col = 0; col < numCols; ++col) {
 			bool isPressed = true;
