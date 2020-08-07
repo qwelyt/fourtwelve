@@ -21,6 +21,9 @@ struct ModPosition {
 
 const ModPosition lower = {3,4,1};
 const ModPosition raise = {3,7,2};
+const byte numModifiers = 2;
+
+ModPosition[numModifiers] modifiers = {lower,raise};
 
 uint8_t keys[layers][numRows][numCols] = {
     // 0 Normal
@@ -59,6 +62,11 @@ bool lastState[numRows][numCols] = {};
 bool state[numRows][numCols] = {};
 uint8_t codes[numRows][numCols] = {Key::NON;
 
+const byte keyLimit = 6;
+byte keyPlace = 0;
+uint8_t keyBuf[keyLimit];
+uint8_t meta = 0x0;
+
 /*********************
 ****    BEGIN!    ****
 *********************/
@@ -87,10 +95,11 @@ void setupCol(byte pin) {
 
 void loop() {
 	scan(numRows, numCols, scanRounds, &rows, &pressed, msDelayBetweenScans);
-	if(stateChanged()){
-		buildState();
-		send();
-		save();
+	readCurrentState(&pressed, &state, numRows, numCols, scanRounds);
+	if(stateChanged(&state, &lastState, numRows, numCols)){
+		buildKeyBuffer();
+		sendBuffer();
+		saveState(&state, &lastState, numRows, numCols);
 	}
 }
 
@@ -103,7 +112,6 @@ void scan(byte numRows, byte numCols, byte scanRounds, byte *rows, byte *pressed
 		debounce(&pressed, &rows, scanRound, numRows, numCols);
 		delay(msDelayBetweenScans);
 	}
-	readState(&pressed, &state, numRows, numCols, scanRounds);
 }
 
 void debounce(bool *pressed, byte *rows, byte scanRound, byte numRows, byte numCols) {
@@ -123,7 +131,12 @@ bool readPin(byte pin) {
 	return false;
 }
 
-void readState(bool *pressed, bool *state, byte numRows, byte numCols, byte scanRounds) {
+
+//////////
+// State
+//////////
+
+void readCurrentState(bool *pressed, bool *state, byte numRows, byte numCols, byte scanRounds) {
 	for(byte row = 0; row < numRows; ++row) {
 		for(byte col = 0; col < numCols; ++col) {
 			bool isPressed = true;
@@ -135,11 +148,7 @@ void readState(bool *pressed, bool *state, byte numRows, byte numCols, byte scan
 	}
 }
 
-//////////
-// State
-//////////
-
-bool stateChanged(bool *lastState, bool *currentState, byte numRows, byte numCols) {
+bool stateChanged(bool *currentState, bool *lastState, byte numRows, byte numCols) {
 	for(byte row=0; row < numRows; ++row){
 		for(byte col=0; col < numCols; ++col){
 			if(lastState[row][col] != currentState[row][col]) {
@@ -150,10 +159,42 @@ bool stateChanged(bool *lastState, bool *currentState, byte numRows, byte numCol
 	return false;
 }
 
-void saveState(bool *state, bool lastState, byte numRows, byte numCols) {
+void saveState(bool *currentState, bool *lastState, byte numRows, byte numCols) {
 	for(byte row=0; row < numRows; ++row){
 		for(byte col=0; col < numCols; ++col){
-			lastState[row][col] = state[row][col];
+			lastState[row][col] = currentState[row][col];
 		}
 	}
 }
+
+
+//////////
+// Key buffer
+//////////
+
+void buildKeyBuffer(uint8_t *keys, bool *state, byte *modifiers, byte numRows, byte numCols, byte numModifiers) {
+    byte layer = layer(&state, &modifiers, numModifiers);
+
+    for(byte col = 0; col < numCols; ++col) {
+        for(byte row = 0; row < numRows; ++row) {
+            if(state[col][row]) {
+                addToBuffer(keys[layer][col][row]);
+            }
+        }
+    }
+}
+
+byte layer(bool *state, ModPosition *modifiers, byte numModifiers) {
+    byte layer = 0;
+    for(modifier = 0; modifier < numModifier; ++modifier) {
+        layer += state[modifier.col][modifier.row] ? modifier.val : 0;
+    }
+    return layer;
+}
+
+
+/* TODO: 
+    - send keybuffer
+    - something...
+
+*/
