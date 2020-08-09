@@ -2,6 +2,6 @@
 #define Q_KEYBOARD_H
 
 void initKeyboard();
-void sendKeyBuffer(uint8_t meta, uint8_t keys[]);
+void sendKeyBuffer(byte meta, byte keys[]);
 
 #endif

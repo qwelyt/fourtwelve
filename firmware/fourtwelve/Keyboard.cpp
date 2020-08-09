@@ -1,10 +1,9 @@
-#include <HID.h>
-#include <string.h>
-#include "keyboard.h"
+#include <Arduino.h>
+#include "Keyboard.h"
 
-const uint8_t REPORT_ID = 0x02;
+const byte REPORT_ID = 0x02;
 
-static const uint8_t hidReportDescriptor[] PROGMEM = {
+static const byte hidReportDescriptor[] PROGMEM = {
 
   //  Keyboard
   0x05, 0x01,                    // USAGE_PAGE (Generic Desktop)
@@ -39,22 +38,23 @@ static const uint8_t hidReportDescriptor[] PROGMEM = {
 };
 
 typedef struct {
-  uint8_t modifiers;
-  uint8_t reserved;
-  uint8_t keys[6];
+  byte modifiers;
+  byte reserved;
+  byte keys[6];
 } KeyReport;
 
+
 void initKeyboard() {
-  static HIDSubDescriptor node(hidReportDescriptor, sizeof(hidReportDescriptor));
+  HIDSubDescriptor node(hidReportDescriptor, sizeof(hidReportDescriptor));
   HID().AppendDescriptor(&node);
 }
 
-void sendKeyBuffer(uint8_t meta, uint8_t keys[]) {
+void sendKeyBuffer(byte meta, byte keys[]) {
   KeyReport report;
 
   report.modifiers = meta;
-  
-  for(byte b=0; b<6; ++b){
+
+  for (byte b = 0; b < 6; ++b) {
     report.keys[b] = keys[b];
   }
 
