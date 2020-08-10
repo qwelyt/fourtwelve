@@ -173,7 +173,7 @@ void saveState(bool *currentState, bool *lastState, byte numRows, byte numCols) 
 ////////////
 
 void sendState(byte numRows, byte numCols, byte numModifiers, bool *state, byte *keys, ModPosition *modifiers ) {
-  byte layer = checkLayer(state, modifiers, numModifiers);
+  byte layer = checkLayer(state, modifiers, numModifiers, numRows, numCols);
 
   for (byte row = 0; row < numRows; ++row) {
     for (byte col = 0; col < numCols; ++col) {
@@ -193,10 +193,56 @@ byte checkLayer(bool *state, ModPosition *modifiers, byte numModifiers, byte num
   return layer;
 }
 
-void addToBuffer(byte value) {
-
+void addToBuffer(byte key) {
+  if(isKeyWithValue(key)){
+    if(isMeta(key)){
+      meta |= metaValue(key);
+    } else {
+      keyBuf[keyPlace++] = key;
+    }
+    if(keyPlace == keyLimit){
+      sendBuffer(meta, keyBuf);
+    }
+  }
 }
 
+bool isKeyWithValue(byte key){
+  return key != Key::NONE;
+}
+
+bool isMeta(byte key){
+  return key == Key::L_CTRL
+      || key == Key::L_SHFT
+      || key == Key::L_ALT
+      || key == Key::L_SUPR
+      || key == Key::R_CTRL
+      || key == Key::R_SHFT
+      || key == Key::R_ALT
+      || key == Key::R_SUPR;
+}
+
+byte metaValue(byte key){
+   switch (key) {
+    case Key::L_CTRL:
+      return Mod::LCTRL;
+    case Key::L_SHFT:
+      return Mod::LSHFT;
+    case Key::L_ALT:
+      return Mod::LALT;
+    case Key::L_SUPR:
+      return Mod::LSUPR;
+    case Key::R_CTRL:
+      return Mod::RCTRL;
+    case Key::R_SHFT:
+      return Mod::RSHFT;
+    case Key::R_ALT:
+      return Mod::RALT;
+    case Key::R_SUPR:
+      return Mod::RSUPR;
+    default:
+      return 0;
+  }
+}
 
 /* TODO:
   //    - send keybuffer
