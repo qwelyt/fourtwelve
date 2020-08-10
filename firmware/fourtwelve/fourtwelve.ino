@@ -99,7 +99,7 @@ void loop() {
 
   if (stateChanged(numRows, numCols, state, lastState)) {
     sendState(numRows, numCols, numModifiers, state, keys, (ModPosition *)modifiers);
-    //    saveState((bool *)state, (bool *)lastState, numRows, numCols);
+    saveState(state, lastState, numRows, numCols);
   }
 }
 
@@ -159,36 +159,36 @@ bool stateChanged(byte numRows, byte numCols, bool *currentState, bool *lastStat
   return false;
 }
 
-//void saveState(bool *currentState, bool *lastState, byte numRows, byte numCols) {
-//  for (byte row = 0; row < numRows; ++row) {
-//    for (byte col = 0; col < numCols; ++col) {
-//      lastState[row][col] = currentState[row][col];
-//    }
-//  }
-//}
-//
-//
+void saveState(bool *currentState, bool *lastState, byte numRows, byte numCols) {
+  for (byte row = 0; row < numRows; ++row) {
+    for (byte col = 0; col < numCols; ++col) {
+      lastState[row*numCols+col] = currentState[row*numCols+col];
+    }
+  }
+}
+
+
 ////////////
 //// Key buffer
 ////////////
 
-void sendState(byte numRows, byte numCols, byte numModifiers, bool **state, byte ***keys, ModPosition *modifiers ) {
-  byte layer = checkLayer((bool **) state, (ModPosition *) modifiers, numModifiers);
+void sendState(byte numRows, byte numCols, byte numModifiers, bool *state, byte *keys, ModPosition *modifiers ) {
+  byte layer = checkLayer(state, modifiers, numModifiers);
 
-  for (byte col = 0; col < numCols; ++col) {
-    for (byte row = 0; row < numRows; ++row) {
-      if (state[col][row] == true) {
-        addToBuffer(keys[layer][col][row]);
+  for (byte row = 0; row < numRows; ++row) {
+    for (byte col = 0; col < numCols; ++col) {
+    if (state[row*numCols+col] == true) {
+        addToBuffer(keys[(layer*numRows+row)*numCols+col]);
       }
     }
   }
 }
 
-byte checkLayer(bool **state, ModPosition *modifiers, byte numModifiers) {
+byte checkLayer(bool *state, ModPosition *modifiers, byte numModifiers, byte numRows, byte numCols) {
   byte layer = 0;
   for (byte modifier = 0; modifier < numModifiers; ++modifier) {
     ModPosition mod = modifiers[modifier];
-    layer += state[mod.col][mod.row] == true ? mod.val : 0;
+    layer += state[mod.col*mod.row] == true ? mod.val : 0;
   }
   return layer;
 }
