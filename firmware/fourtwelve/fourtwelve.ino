@@ -94,11 +94,11 @@ void setupCol(byte pin) {
 
 
 void loop() {
-  scan(scanRounds, numRows, numCols, rows, (bool ***)pressed, msDelayBetweenScans);
-  readCurrentState(scanRounds, numRows, numCols, (bool ***)pressed, (bool **)state);
+  scan(scanRounds, numRows, numCols, rows, pressed, msDelayBetweenScans);
+  readCurrentState(scanRounds, numRows, numCols, pressed, state);
 
-  if (stateChanged(numRows, numCols, (bool **)state, (bool **)lastState)) {
-    sendState(numRows, numCols, numModifiers, (bool **)state, (byte ***)keys, (ModPosition *)modifiers);
+  if (stateChanged(numRows, numCols, state, lastState)) {
+    sendState(numRows, numCols, numModifiers, state, keys, (ModPosition *)modifiers);
     //    saveState((bool *)state, (bool *)lastState, numRows, numCols);
   }
 }
@@ -107,18 +107,18 @@ void loop() {
 //  Scan
 //////////
 
-void scan( byte scanRounds, byte numRows, byte numCols, int *rows, bool ***pressed, int msDelayBetweenScans) {
+void scan( byte scanRounds, byte numRows, byte numCols, int *rows, bool *pressed, int msDelayBetweenScans) {
   for (byte scanRound = 0; scanRound < scanRounds; ++scanRound) {
     debounce(pressed, rows, scanRound, numRows, numCols);
     delay(msDelayBetweenScans);
   }
 }
 
-void debounce(bool ***pressed, int *rows, byte scanRound, byte numRows, byte numCols) {
+void debounce(bool *pressed, int *rows, byte scanRound, byte numRows, byte numCols) {
   for (byte row = 0; row < numRows; ++row) {
     digitalWrite(rows[row], LOW);
     for (byte col = 0; col < numCols; ++col) {
-      pressed[scanRound][row][col] = readPin(cols[col]);
+      pressed[(scanRound*numRows+row)*numCols+col] = readPin(cols[col]);
     }
     digitalWrite(rows[row], HIGH);
   }
@@ -136,22 +136,22 @@ bool readPin(byte pin) {
 // State
 //////////
 
-void readCurrentState(byte scanRounds, byte numRows, byte numCols, bool ***pressed, bool **state) {
+void readCurrentState(byte scanRounds, byte numRows, byte numCols, bool *pressed, bool *state) {
   for (byte row = 0; row < numRows; ++row) {
     for (byte col = 0; col < numCols; ++col) {
       bool isPressed = true;
       for (byte scanRound = 0; scanRound < scanRounds; ++scanRound) {
-        isPressed = isPressed && pressed[scanRound][row][col];
+        isPressed = isPressed && pressed[(scanRound*numRows+row)*numCols+col];
       }
-      state[row][col] = isPressed;
+      state[row*numCols+col] = isPressed;
     }
   }
 }
 
-bool stateChanged(byte numRows, byte numCols, bool **currentState, bool **lastState) {
+bool stateChanged(byte numRows, byte numCols, bool *currentState, bool *lastState) {
   for (byte row = 0; row < numRows; ++row) {
     for (byte col = 0; col < numCols; ++col) {
-      if (lastState[row][col] != currentState[row][col]) {
+      if (lastState[row*numCols+col] != currentState[row*numCols+col]) {
         return true;
       }
     }
