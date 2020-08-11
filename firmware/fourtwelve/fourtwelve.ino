@@ -62,11 +62,6 @@ bool lastState[numRows][numCols] = {};
 bool state[numRows][numCols] = {};
 byte codes[numRows][numCols] = {Key::NONE};
 
-const byte keyLimit = 6;
-byte keyPlace = 0;
-byte keyBuf[keyLimit];
-byte meta = 0x0;
-
 /*********************
 ****    BEGIN!    ****
 *********************/
@@ -175,12 +170,30 @@ void saveState(bool *currentState, bool *lastState, byte numRows, byte numCols) 
 void sendState(byte numRows, byte numCols, byte numModifiers, bool *state, byte *keys, ModPosition *modifiers ) {
   byte layer = checkLayer(state, modifiers, numModifiers, numRows, numCols);
 
+  byte keyLimit = 6;
+  byte keyBuf[keyLimit] = {};
+  byte keyIndex = 0;
+  byte meta = 0;
+
   for (byte row = 0; row < numRows; ++row) {
     for (byte col = 0; col < numCols; ++col) {
-    if (state[row*numCols+col] == true) {
-        addToBuffer(keys[(layer*numRows+row)*numCols+col]);
+      if (state[row*numCols+col] == true) {
+        byte key = keys[(layer*numRows+row)*numCols+col];
+        meta |= metaValue(key);
+        keyIndex = buildBuffer(key, keyBuf, keyIndex, keyLimit);
+
+        if(keyIndex == keyLimit) {
+          sendBuffer(meta, keyBuf);
+          keyIndex = resetBuffer(keyBuf, keyLimit);
+          meta = 0;
+        }
       }
     }
+  }
+  if(keyIndex != 0){
+    sendBuffer(meta, keyBuf);
+    keyIndex = resetBuffer(keyBuf, keyLimit);
+    meta = 0;
   }
 }
 
@@ -193,33 +206,10 @@ byte checkLayer(bool *state, ModPosition *modifiers, byte numModifiers, byte num
   return layer;
 }
 
-void addToBuffer(byte key) {
-  if(isKeyWithValue(key)){
-    if(isMeta(key)){
-      meta |= metaValue(key);
-    } else {
-      keyBuf[keyPlace++] = key;
-    }
-    if(keyPlace == keyLimit){
-      sendBuffer(meta, keyBuf);
-    }
-  }
-}
-
 bool isKeyWithValue(byte key){
   return key != Key::NONE;
 }
 
-bool isMeta(byte key){
-  return key == Key::L_CTRL
-      || key == Key::L_SHFT
-      || key == Key::L_ALT
-      || key == Key::L_SUPR
-      || key == Key::R_CTRL
-      || key == Key::R_SHFT
-      || key == Key::R_ALT
-      || key == Key::R_SUPR;
-}
 
 byte metaValue(byte key){
    switch (key) {
@@ -244,8 +234,13 @@ byte metaValue(byte key){
   }
 }
 
-/* TODO:
-  //    - send keybuffer
-  //    - something...
+byte resetBuffer(byte *keyBuf, byte keyLimit){
+  for(byte b=0; b<keyLimit; ++b){
+    keyBuf[b] = Key::NONE;
+  }
+  return 0;
+}
 
-*/
+void sendBuffer(byte meta, byte *keyBuf){
+// TODO: this. Send the buffer. Need a working Keyboard.cpp for it though.
+}
