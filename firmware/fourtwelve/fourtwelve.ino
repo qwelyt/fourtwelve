@@ -79,41 +79,47 @@ void setup() {
 }
 
 void setupCol(byte pin) {
-  pinMode(pin, OUTPUT);
-  digitalWrite(pin, HIGH);
+  pinMode(pin, INPUT_PULLUP);
 }
 
 void setupRow(byte pin) {
-  pinMode(pin, INPUT);
+  pinMode(pin, OUTPUT);
+  digitalWrite(pin, HIGH);
 }
 
 ///////////////////////////
 
 
 void loop() {
-//  scan(scanRounds, numRows, numCols, rows, pressed[0][0], msDelayBetweenScans);
-//  readCurrentState(scanRounds, numRows, numCols, pressed[0][0], state[0]);
-//
-//  if (stateChanged(numRows, numCols, state[0], lastState[0])) {
-//    sendState(numRows, numCols, numModifiers, state[0], keys[0][0], modifiers);
-//    saveState(state[0], lastState[0], numRows, numCols);
-//  }
+  scan(scanRounds, numRows, numCols, rows, pressed[0][0], msDelayBetweenScans);
+  readCurrentState(scanRounds, numRows, numCols, pressed[0][0], state[0]);
+  Serial.println();
+  Serial.print("State changed: ");
+  Serial.println(stateChanged(numRows, numCols, state[0], lastState[0]));
 
-    byte scanRound = 0;
-    byte col = 0;
-      digitalWrite(cols[col], LOW);
-    for (byte row = 0; row < numRows; ++row) {
-      pressed[scanRound][row][col] = readPin(rows[row]);
-//      pressed[(scanRound*numRows+row)*numCols+col] = readPin(rows[row]);
-//      Serial.print("Pin: [");
-//      Serial.print(cols[col]);
-//      Serial.print(", ");
-//      Serial.print(rows[row]);
-//      Serial.print("] ==");
+  if (stateChanged(numRows, numCols, state[0], lastState[0])) {
+    Serial.println("Shall send the state!");
+    sendState(numRows, numCols, numModifiers, state[0], keys[0][0], modifiers);
+    saveState(state[0], lastState[0], numRows, numCols);
+  }
+//digitalWrite(rows[0], HIGH);
+//Serial.print(readPin(cols[0]));
+
+//    byte scanRound = 0;
+//    byte col = 0;
+//      //digitalWrite(cols[col], LOW);
+//    for (byte row = 0; row < numRows; ++row) {
+//      pressed[scanRound][row][col] = readPin(rows[row]);
+////      pressed[(scanRound*numRows+row)*numCols+col] = readPin(rows[row]);
+////      Serial.print("Pin: [");
+////      Serial.print(cols[col]);
+////      Serial.print(", ");
+////      Serial.print(rows[row]);
+////      Serial.print("] ==");
 //      Serial.println(readPin(rows[row]));
-    }
-    digitalWrite(cols[col], HIGH);
-//    delay(500);
+//    }
+    //digitalWrite(cols[col], HIGH);
+   delay(500);
 }
 
 //////////
@@ -128,23 +134,25 @@ void scan(byte scanRounds, byte numRows, byte numCols, int *rows, bool *pressed,
 }
 
 void debounce(bool *pressed, int *rows, byte scanRound, byte numRows, byte numCols) {
-  for (byte col = 0; col < numCols; ++col) {
-    digitalWrite(cols[col], LOW);
-    for (byte row = 0; row < numRows; ++row) {
-      pressed[(scanRound*numRows+row)*numCols+col] = readPin(rows[row]);
+  for (byte row = 0; row < numRows; ++row) {
+    digitalWrite(rows[row], LOW);
+    for (byte col = 0; col < numCols; ++col) {
+      pressed[(scanRound*numRows+row)*numCols+col] = readPin(cols[col]);
+//      if(readPin(cols[col])){
 //      Serial.print("Pin: [");
 //      Serial.print(cols[col]);
 //      Serial.print(", ");
 //      Serial.print(rows[row]);
 //      Serial.print("] ==");
 //      Serial.println(readPin(rows[row]));
+//      }
     }
-    digitalWrite(cols[col], HIGH);
+    digitalWrite(rows[row], HIGH);
   }
 }
 
 bool readPin(byte pin) {
-  if (!!digitalRead(pin)) {
+  if (!digitalRead(pin)) {
     return true;
   }
   return false;
@@ -165,6 +173,7 @@ void readCurrentState(byte scanRounds, byte numRows, byte numCols, bool *pressed
       state[row*numCols+col] = isPressed;
     }
   }
+  printState();
 }
 
 bool stateChanged(byte numRows, byte numCols, bool *currentState, bool *lastState) {
@@ -199,7 +208,11 @@ void sendState(byte numRows, byte numCols, byte numModifiers, bool *state, byte 
   byte keyIndex = 0;
   byte meta = 0;
 
-  for (byte row = 0; row < numRows; ++row) {
+  Serial.print("We are in sendState and on layer ");
+  Serial.print(layer);
+  Serial.print(" and seeing state ");
+  printState(state, numCols, numRows);
+   for (byte row = 0; row < numRows; ++row) {
     for (byte col = 0; col < numCols; ++col) {
       if (state[row*numCols+col] == true) {
         byte key = keys[(layer*numRows+row)*numCols+col];
@@ -224,8 +237,46 @@ byte checkLayer(bool *state, ModPosition *modifiers, byte numModifiers, byte num
   byte layer = 0;
   for (byte modifier = 0; modifier < numModifiers; ++modifier) {
     ModPosition mod = modifiers[modifier];
-    layer += state[mod.col*mod.row] == true ? mod.val : 0;
+    Serial.print("Check state for col");
+    Serial.print(mod.col);
+    Serial.print(" row ");
+    Serial.print(mod.row);
+    Serial.print(" which should be ");
+    Serial.print(mod.col*mod.row);
+    Serial.print(" in state, checking that and gets ");
+    Serial.println(state[mod.row*numCols+mod.col]);
+    layer += state[mod.row*numCols+mod.col] == true ? mod.val : 0;
   }
+
+  for(byte b=0; b < numRows*numCols; ++b){
+    Serial.print(b);
+    Serial.print("  ");
+  }
+  Serial.println();
+  for(byte b=0; b < numRows*numCols; ++b){
+    Serial.print(state[b]);
+    Serial.print("  ");
+  }
+  Serial.println();
+
+  Serial.println("============ checkLayer =================");
+    Serial.println("State");
+  Serial.print(" ");
+  for (int j = 0; j < numCols; ++j) {
+      Serial.print(" ");
+      Serial.print(j);
+  }
+  for (int i = numRows-1; i > -1 ; --i) {
+    Serial.println();
+    Serial.print(i);
+    for (int j = 0; j < numCols; ++j) {
+      Serial.print(" ");
+      Serial.print(state[i*numCols+j], DEC);
+    }
+  }
+  Serial.println();
+  Serial.println("============================================");
+  
   return layer;
 }
 
@@ -277,12 +328,30 @@ void printState() {
       Serial.print(" ");
       Serial.print(j);
   }
-  for (int i = 0; i < numRows; ++i) {
+  for (int i = numRows-1; i > -1 ; --i) {
     Serial.println();
     Serial.print(i);
     for (int j = 0; j < numCols; ++j) {
       Serial.print(" ");
       Serial.print(state[i][j], DEC);
+    }
+  }
+  Serial.println();
+}
+
+void printState(bool *state, byte numCols, byte numRows){
+    Serial.println("State");
+  Serial.print(" ");
+  for (int j = 0; j < numCols; ++j) {
+      Serial.print(" ");
+      Serial.print(j);
+  }
+  for (int row = numRows-1; row > -1 ; --row) {
+    Serial.println();
+    Serial.print(row);
+    for (int col = 0; col < numCols; ++col) {
+      Serial.print(" ");
+      Serial.print(state[row*numCols+col]);
     }
   }
   Serial.println();
