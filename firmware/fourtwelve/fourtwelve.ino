@@ -10,7 +10,7 @@ const byte msDelayBetweenScans = 10;
 
 
 int cols[numCols] = {2, 3, 4, 5, 6, 7, 8, 9, 10, 16, 14, 15};
-int rows[numRows] = {A0, A1, A2, A3};
+int rows[numRows] = {A3,A2,A1,A0};
 
 
 typedef struct {
@@ -93,32 +93,11 @@ void setupRow(byte pin) {
 void loop() {
   scan(scanRounds, numRows, numCols, rows, pressed[0][0], msDelayBetweenScans);
   readCurrentState(scanRounds, numRows, numCols, pressed[0][0], state[0]);
-  Serial.println();
-  Serial.print("State changed: ");
-  Serial.println(stateChanged(numRows, numCols, state[0], lastState[0]));
 
   if (stateChanged(numRows, numCols, state[0], lastState[0])) {
-    Serial.println("Shall send the state!");
-    sendState(numRows, numCols, numModifiers, state[0], keys[0][0], modifiers);
+    sendState(numRows, numCols, numModifiers, state[0], keys[0][0], modifiers); 
     saveState(state[0], lastState[0], numRows, numCols);
   }
-//digitalWrite(rows[0], HIGH);
-//Serial.print(readPin(cols[0]));
-
-//    byte scanRound = 0;
-//    byte col = 0;
-//      //digitalWrite(cols[col], LOW);
-//    for (byte row = 0; row < numRows; ++row) {
-//      pressed[scanRound][row][col] = readPin(rows[row]);
-////      pressed[(scanRound*numRows+row)*numCols+col] = readPin(rows[row]);
-////      Serial.print("Pin: [");
-////      Serial.print(cols[col]);
-////      Serial.print(", ");
-////      Serial.print(rows[row]);
-////      Serial.print("] ==");
-//      Serial.println(readPin(rows[row]));
-//    }
-    //digitalWrite(cols[col], HIGH);
    delay(500);
 }
 
@@ -138,14 +117,6 @@ void debounce(bool *pressed, int *rows, byte scanRound, byte numRows, byte numCo
     digitalWrite(rows[row], LOW);
     for (byte col = 0; col < numCols; ++col) {
       pressed[(scanRound*numRows+row)*numCols+col] = readPin(cols[col]);
-//      if(readPin(cols[col])){
-//      Serial.print("Pin: [");
-//      Serial.print(cols[col]);
-//      Serial.print(", ");
-//      Serial.print(rows[row]);
-//      Serial.print("] ==");
-//      Serial.println(readPin(rows[row]));
-//      }
     }
     digitalWrite(rows[row], HIGH);
   }
@@ -173,7 +144,6 @@ void readCurrentState(byte scanRounds, byte numRows, byte numCols, bool *pressed
       state[row*numCols+col] = isPressed;
     }
   }
-  printState();
 }
 
 bool stateChanged(byte numRows, byte numCols, bool *currentState, bool *lastState) {
@@ -209,14 +179,20 @@ void sendState(byte numRows, byte numCols, byte numModifiers, bool *state, byte 
   byte meta = 0;
 
   Serial.print("We are in sendState and on layer ");
-  Serial.print(layer);
-  Serial.print(" and seeing state ");
-  printState(state, numCols, numRows);
+  Serial.println(layer);
    for (byte row = 0; row < numRows; ++row) {
     for (byte col = 0; col < numCols; ++col) {
       if (state[row*numCols+col] == true) {
+        char text[100];
+        sprintf(text, "Found that we should send for row %d col %d", row, col);
+        Serial.println(text);
         byte key = keys[(layer*numRows+row)*numCols+col];
         meta |= metaValue(key);
+        Serial.println(metaValue(key), DEC);
+        if(metaValue(key) != 0){
+          keyBuf[keyIndex] = key;
+          ++keyIndex;
+        }
 
         if(keyIndex == keyLimit) {
           sendBuffer(meta, keyBuf, keyLimit);
@@ -316,6 +292,7 @@ byte resetBuffer(byte *keyBuf, byte keyLimit){
 }
 
 void sendBuffer(byte meta, byte keyBuf[], byte keyLimit){
+  Serial.println("SEND THE BUFFER!");
   sendKeyBuffer(meta, keyBuf, keyLimit);
   printState();
   printKeyBuf(keyBuf, keyLimit);
@@ -328,7 +305,7 @@ void printState() {
       Serial.print(" ");
       Serial.print(j);
   }
-  for (int i = numRows-1; i > -1 ; --i) {
+  for (int i = 0; i < numRows ; ++i) {
     Serial.println();
     Serial.print(i);
     for (int j = 0; j < numCols; ++j) {
@@ -346,7 +323,7 @@ void printState(bool *state, byte numCols, byte numRows){
       Serial.print(" ");
       Serial.print(j);
   }
-  for (int row = numRows-1; row > -1 ; --row) {
+  for (int row = 0; row < numRows ; ++row) {
     Serial.println();
     Serial.print(row);
     for (int col = 0; col < numCols; ++col) {
