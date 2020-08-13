@@ -10,7 +10,7 @@ const byte msDelayBetweenScans = 10;
 
 
 int cols[numCols] = {2, 3, 4, 5, 6, 7, 8, 9, 10, 16, 14, 15};
-int rows[numRows] = {A3,A2,A1,A0};
+int rows[numRows] = {A3, A2, A1, A0};
 
 
 typedef struct {
@@ -74,8 +74,6 @@ void setup() {
     setupCol(cols[b]);
   }
   initKeyboard();
-  Serial.begin(115200);
-  Serial.println("Hello!");
 }
 
 void setupCol(byte pin) {
@@ -95,10 +93,9 @@ void loop() {
   readCurrentState(scanRounds, numRows, numCols, pressed[0][0], state[0]);
 
   if (stateChanged(numRows, numCols, state[0], lastState[0])) {
-    sendState(numRows, numCols, numModifiers, state[0], keys[0][0], modifiers); 
+    sendState(numRows, numCols, numModifiers, state[0], lastState[0], keys[0][0], modifiers);
     saveState(state[0], lastState[0], numRows, numCols);
   }
-   delay(500);
 }
 
 //////////
@@ -116,7 +113,7 @@ void debounce(bool *pressed, int *rows, byte scanRound, byte numRows, byte numCo
   for (byte row = 0; row < numRows; ++row) {
     digitalWrite(rows[row], LOW);
     for (byte col = 0; col < numCols; ++col) {
-      pressed[(scanRound*numRows+row)*numCols+col] = readPin(cols[col]);
+      pressed[(scanRound * numRows + row)*numCols + col] = readPin(cols[col]);
     }
     digitalWrite(rows[row], HIGH);
   }
@@ -139,9 +136,9 @@ void readCurrentState(byte scanRounds, byte numRows, byte numCols, bool *pressed
     for (byte col = 0; col < numCols; ++col) {
       bool isPressed = true;
       for (byte scanRound = 0; scanRound < scanRounds; ++scanRound) {
-        isPressed = isPressed && pressed[(scanRound*numRows+row)*numCols+col];
+        isPressed = isPressed && pressed[(scanRound * numRows + row) * numCols + col];
       }
-      state[row*numCols+col] = isPressed;
+      state[row * numCols + col] = isPressed;
     }
   }
 }
@@ -149,7 +146,7 @@ void readCurrentState(byte scanRounds, byte numRows, byte numCols, bool *pressed
 bool stateChanged(byte numRows, byte numCols, bool *currentState, bool *lastState) {
   for (byte row = 0; row < numRows; ++row) {
     for (byte col = 0; col < numCols; ++col) {
-      if (lastState[row*numCols+col] != currentState[row*numCols+col]) {
+      if (lastState[row * numCols + col] != currentState[row * numCols + col]) {
         return true;
       }
     }
@@ -160,7 +157,7 @@ bool stateChanged(byte numRows, byte numCols, bool *currentState, bool *lastStat
 void saveState(bool *currentState, bool *lastState, byte numRows, byte numCols) {
   for (byte row = 0; row < numRows; ++row) {
     for (byte col = 0; col < numCols; ++col) {
-      lastState[row*numCols+col] = currentState[row*numCols+col];
+      lastState[row * numCols + col] = currentState[row * numCols + col];
     }
   }
 }
@@ -170,31 +167,24 @@ void saveState(bool *currentState, bool *lastState, byte numRows, byte numCols) 
 //// Key buffer
 ////////////
 
-void sendState(byte numRows, byte numCols, byte numModifiers, bool *state, byte *keys, ModPosition *modifiers ) {
+void sendState(byte numRows, byte numCols, byte numModifiers, bool *state, bool *lastState, byte *keys, ModPosition *modifiers ) {
   byte layer = checkLayer(state, modifiers, numModifiers, numRows, numCols);
 
   byte keyLimit = 6;
-  byte keyBuf[keyLimit] = {};
+  byte keyBuf[keyLimit] = {0, 0, 0, 0, 0, 0};
   byte keyIndex = 0;
   byte meta = 0;
 
-  Serial.print("We are in sendState and on layer ");
-  Serial.println(layer);
-   for (byte row = 0; row < numRows; ++row) {
+  for (byte row = 0; row < numRows; ++row) {
     for (byte col = 0; col < numCols; ++col) {
-      if (state[row*numCols+col] == true) {
-        char text[100];
-        sprintf(text, "Found that we should send for row %d col %d", row, col);
-        Serial.println(text);
-        byte key = keys[(layer*numRows+row)*numCols+col];
-        meta |= metaValue(key);
-        Serial.println(metaValue(key), DEC);
-        if(metaValue(key) != 0){
-          keyBuf[keyIndex] = key;
-          ++keyIndex;
+      if (state[row * numCols + col] == true) {
+        byte key = keys[(layer * numRows + row) * numCols + col];
+        byte metaVal = metaValue(key);
+        meta |= metaVal;
+        if (metaVal == 0) {
+          keyBuf[keyIndex++] = key;
         }
-
-        if(keyIndex == keyLimit) {
+        if (keyIndex == keyLimit) {
           sendBuffer(meta, keyBuf, keyLimit);
           keyIndex = resetBuffer(keyBuf, keyLimit);
           meta = 0;
@@ -202,7 +192,7 @@ void sendState(byte numRows, byte numCols, byte numModifiers, bool *state, byte 
       }
     }
   }
-  if(keyIndex != 0){
+  if (keyIndex != 0 || stateChanged(numRows, numCols, state, lastState)) {
     sendBuffer(meta, keyBuf, keyLimit);
     keyIndex = resetBuffer(keyBuf, keyLimit);
     meta = 0;
@@ -213,56 +203,18 @@ byte checkLayer(bool *state, ModPosition *modifiers, byte numModifiers, byte num
   byte layer = 0;
   for (byte modifier = 0; modifier < numModifiers; ++modifier) {
     ModPosition mod = modifiers[modifier];
-    Serial.print("Check state for col");
-    Serial.print(mod.col);
-    Serial.print(" row ");
-    Serial.print(mod.row);
-    Serial.print(" which should be ");
-    Serial.print(mod.col*mod.row);
-    Serial.print(" in state, checking that and gets ");
-    Serial.println(state[mod.row*numCols+mod.col]);
-    layer += state[mod.row*numCols+mod.col] == true ? mod.val : 0;
+    layer += state[mod.row * numCols + mod.col] == true ? mod.val : 0;
   }
-
-  for(byte b=0; b < numRows*numCols; ++b){
-    Serial.print(b);
-    Serial.print("  ");
-  }
-  Serial.println();
-  for(byte b=0; b < numRows*numCols; ++b){
-    Serial.print(state[b]);
-    Serial.print("  ");
-  }
-  Serial.println();
-
-  Serial.println("============ checkLayer =================");
-    Serial.println("State");
-  Serial.print(" ");
-  for (int j = 0; j < numCols; ++j) {
-      Serial.print(" ");
-      Serial.print(j);
-  }
-  for (int i = numRows-1; i > -1 ; --i) {
-    Serial.println();
-    Serial.print(i);
-    for (int j = 0; j < numCols; ++j) {
-      Serial.print(" ");
-      Serial.print(state[i*numCols+j], DEC);
-    }
-  }
-  Serial.println();
-  Serial.println("============================================");
-  
   return layer;
 }
 
-bool isKeyWithValue(byte key){
+bool isKeyWithValue(byte key) {
   return key != Key::NONE;
 }
 
 
-byte metaValue(byte key){
-   switch (key) {
+byte metaValue(byte key) {
+  switch (key) {
     case Key::L_CTRL:
       return Mod::LCTRL;
     case Key::L_SHFT:
@@ -284,60 +236,43 @@ byte metaValue(byte key){
   }
 }
 
-byte resetBuffer(byte *keyBuf, byte keyLimit){
-  for(byte b=0; b<keyLimit; ++b){
+byte resetBuffer(byte *keyBuf, byte keyLimit) {
+  for (byte b = 0; b < keyLimit; ++b) {
     keyBuf[b] = Key::NONE;
   }
   return 0;
 }
 
-void sendBuffer(byte meta, byte keyBuf[], byte keyLimit){
-  Serial.println("SEND THE BUFFER!");
+void sendBuffer(byte meta, byte keyBuf[], byte keyLimit) {
   sendKeyBuffer(meta, keyBuf, keyLimit);
-  printState();
-  printKeyBuf(keyBuf, keyLimit);
 }
 
-void printState() {
+////////////
+//// Debug
+////////////
+
+void printState(bool *state, byte numCols, byte numRows) {
   Serial.println("State");
   Serial.print(" ");
   for (int j = 0; j < numCols; ++j) {
-      Serial.print(" ");
-      Serial.print(j);
-  }
-  for (int i = 0; i < numRows ; ++i) {
-    Serial.println();
-    Serial.print(i);
-    for (int j = 0; j < numCols; ++j) {
-      Serial.print(" ");
-      Serial.print(state[i][j], DEC);
-    }
-  }
-  Serial.println();
-}
-
-void printState(bool *state, byte numCols, byte numRows){
-    Serial.println("State");
-  Serial.print(" ");
-  for (int j = 0; j < numCols; ++j) {
-      Serial.print(" ");
-      Serial.print(j);
+    Serial.print(" ");
+    Serial.print(j);
   }
   for (int row = 0; row < numRows ; ++row) {
     Serial.println();
     Serial.print(row);
     for (int col = 0; col < numCols; ++col) {
       Serial.print(" ");
-      Serial.print(state[row*numCols+col]);
+      Serial.print(state[row * numCols + col]);
     }
   }
   Serial.println();
 }
 
-void printKeyBuf(byte keyBuf[], byte keyLimit){
+void printKeyBuf(byte keyBuf[], byte keyLimit) {
   Serial.println();
   Serial.println("keyBuf");
-  for(byte b = 0; b < keyLimit; ++b){
+  for (byte b = 0; b < keyLimit; ++b) {
     Serial.print(" ");
     Serial.print(keyBuf[b]);
   }
