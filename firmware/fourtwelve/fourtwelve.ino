@@ -1,4 +1,4 @@
-//#include "Keyboard.h"
+#include "Keyboard.h"
 #include "Key.h"
 
 const byte numCols = 12;
@@ -9,8 +9,8 @@ const byte scanRounds = 2;
 const byte msDelayBetweenScans = 10;
 
 
-int cols[numCols] = {2, 3, 4, 5, 6, 7, 8, 9, 10, 16, 15, 14};
-int rows[numRows] = {A2, A3, A4, A5};
+int cols[numCols] = {2, 3, 4, 5, 6, 7, 8, 9, 10, 16, 14, 15};
+int rows[numRows] = {A0, A1, A2, A3};
 
 
 typedef struct {
@@ -60,7 +60,6 @@ byte keys[layers][numRows][numCols] = {
 bool pressed[scanRounds][numRows][numCols] = {};
 bool lastState[numRows][numCols] = {};
 bool state[numRows][numCols] = {};
-byte codes[numRows][numCols] = {Key::NONE};
 
 /*********************
 ****    BEGIN!    ****
@@ -74,35 +73,54 @@ void setup() {
   for (byte b = 0; b < numCols; ++b) {
     setupCol(cols[b]);
   }
+  initKeyboard();
+  Serial.begin(115200);
+  Serial.println("Hello!");
 }
 
-void setupRow(byte pin) {
+void setupCol(byte pin) {
   pinMode(pin, OUTPUT);
   digitalWrite(pin, HIGH);
 }
 
-void setupCol(byte pin) {
-  pinMode(pin, INPUT_PULLUP);
+void setupRow(byte pin) {
+  pinMode(pin, INPUT);
 }
 
 ///////////////////////////
 
 
 void loop() {
-  scan(scanRounds, numRows, numCols, rows, pressed, msDelayBetweenScans);
-  readCurrentState(scanRounds, numRows, numCols, pressed, state);
+//  scan(scanRounds, numRows, numCols, rows, pressed[0][0], msDelayBetweenScans);
+//  readCurrentState(scanRounds, numRows, numCols, pressed[0][0], state[0]);
+//
+//  if (stateChanged(numRows, numCols, state[0], lastState[0])) {
+//    sendState(numRows, numCols, numModifiers, state[0], keys[0][0], modifiers);
+//    saveState(state[0], lastState[0], numRows, numCols);
+//  }
 
-  if (stateChanged(numRows, numCols, state, lastState)) {
-    sendState(numRows, numCols, numModifiers, state, keys, (ModPosition *)modifiers);
-    saveState(state, lastState, numRows, numCols);
-  }
+    byte scanRound = 0;
+    byte col = 0;
+      digitalWrite(cols[col], LOW);
+    for (byte row = 0; row < numRows; ++row) {
+      pressed[scanRound][row][col] = readPin(rows[row]);
+//      pressed[(scanRound*numRows+row)*numCols+col] = readPin(rows[row]);
+//      Serial.print("Pin: [");
+//      Serial.print(cols[col]);
+//      Serial.print(", ");
+//      Serial.print(rows[row]);
+//      Serial.print("] ==");
+//      Serial.println(readPin(rows[row]));
+    }
+    digitalWrite(cols[col], HIGH);
+//    delay(500);
 }
 
 //////////
 //  Scan
 //////////
 
-void scan( byte scanRounds, byte numRows, byte numCols, int *rows, bool *pressed, int msDelayBetweenScans) {
+void scan(byte scanRounds, byte numRows, byte numCols, int *rows, bool *pressed, int msDelayBetweenScans) {
   for (byte scanRound = 0; scanRound < scanRounds; ++scanRound) {
     debounce(pressed, rows, scanRound, numRows, numCols);
     delay(msDelayBetweenScans);
@@ -110,17 +128,23 @@ void scan( byte scanRounds, byte numRows, byte numCols, int *rows, bool *pressed
 }
 
 void debounce(bool *pressed, int *rows, byte scanRound, byte numRows, byte numCols) {
-  for (byte row = 0; row < numRows; ++row) {
-    digitalWrite(rows[row], LOW);
-    for (byte col = 0; col < numCols; ++col) {
-      pressed[(scanRound*numRows+row)*numCols+col] = readPin(cols[col]);
+  for (byte col = 0; col < numCols; ++col) {
+    digitalWrite(cols[col], LOW);
+    for (byte row = 0; row < numRows; ++row) {
+      pressed[(scanRound*numRows+row)*numCols+col] = readPin(rows[row]);
+//      Serial.print("Pin: [");
+//      Serial.print(cols[col]);
+//      Serial.print(", ");
+//      Serial.print(rows[row]);
+//      Serial.print("] ==");
+//      Serial.println(readPin(rows[row]));
     }
-    digitalWrite(rows[row], HIGH);
+    digitalWrite(cols[col], HIGH);
   }
 }
 
 bool readPin(byte pin) {
-  if (!digitalRead(pin)) {
+  if (!!digitalRead(pin)) {
     return true;
   }
   return false;
@@ -180,10 +204,9 @@ void sendState(byte numRows, byte numCols, byte numModifiers, bool *state, byte 
       if (state[row*numCols+col] == true) {
         byte key = keys[(layer*numRows+row)*numCols+col];
         meta |= metaValue(key);
-        keyIndex = buildBuffer(key, keyBuf, keyIndex, keyLimit);
 
         if(keyIndex == keyLimit) {
-          sendBuffer(meta, keyBuf);
+          sendBuffer(meta, keyBuf, keyLimit);
           keyIndex = resetBuffer(keyBuf, keyLimit);
           meta = 0;
         }
@@ -191,7 +214,7 @@ void sendState(byte numRows, byte numCols, byte numModifiers, bool *state, byte 
     }
   }
   if(keyIndex != 0){
-    sendBuffer(meta, keyBuf);
+    sendBuffer(meta, keyBuf, keyLimit);
     keyIndex = resetBuffer(keyBuf, keyLimit);
     meta = 0;
   }
@@ -241,6 +264,36 @@ byte resetBuffer(byte *keyBuf, byte keyLimit){
   return 0;
 }
 
-void sendBuffer(byte meta, byte *keyBuf){
-// TODO: this. Send the buffer. Need a working Keyboard.cpp for it though.
+void sendBuffer(byte meta, byte keyBuf[], byte keyLimit){
+  sendKeyBuffer(meta, keyBuf, keyLimit);
+  printState();
+  printKeyBuf(keyBuf, keyLimit);
+}
+
+void printState() {
+  Serial.println("State");
+  Serial.print(" ");
+  for (int j = 0; j < numCols; ++j) {
+      Serial.print(" ");
+      Serial.print(j);
+  }
+  for (int i = 0; i < numRows; ++i) {
+    Serial.println();
+    Serial.print(i);
+    for (int j = 0; j < numCols; ++j) {
+      Serial.print(" ");
+      Serial.print(state[i][j], DEC);
+    }
+  }
+  Serial.println();
+}
+
+void printKeyBuf(byte keyBuf[], byte keyLimit){
+  Serial.println();
+  Serial.println("keyBuf");
+  for(byte b = 0; b < keyLimit; ++b){
+    Serial.print(" ");
+    Serial.print(keyBuf[b]);
+  }
+  Serial.println();
 }

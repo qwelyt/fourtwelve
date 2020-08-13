@@ -1,7 +1,10 @@
 #include <Arduino.h>
+#include <HID.h>
 #include "Keyboard.h"
 
 const byte REPORT_ID = 0x02;
+
+void send6KRO(byte, byte[]);
 
 static const byte hidReportDescriptor[] PROGMEM = {
 
@@ -49,7 +52,15 @@ void initKeyboard() {
   HID().AppendDescriptor(&node);
 }
 
-void sendKeyBuffer(byte meta, byte keys[]) {
+void sendKeyBuffer(byte meta, byte keys[], byte keyLimit) {
+  if(keyLimit == 6) {
+    send6KRO(meta, keys);
+  } else {
+    // No idea. But should probably figure out how to do a NKRO.
+  }
+}
+
+void send6KRO(byte meta, byte keys[]){
   KeyReport report;
 
   report.modifiers = meta;
@@ -57,6 +68,5 @@ void sendKeyBuffer(byte meta, byte keys[]) {
   for (byte b = 0; b < 6; ++b) {
     report.keys[b] = keys[b];
   }
-
   HID().SendReport(REPORT_ID, &report, sizeof(report));
 }
