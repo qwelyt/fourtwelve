@@ -178,7 +178,10 @@ void sendState(byte numRows, byte numCols, byte numModifiers, bool *state, bool 
   for (byte row = 0; row < numRows; ++row) {
     for (byte col = 0; col < numCols; ++col) {
       if (state[row * numCols + col] == true) {
-        byte key = keys[(layer * numRows + row) * numCols + col];
+        byte key = 0;
+        for(byte l = layer; l >= 0 && key == 0; --l){
+          key = keys[(l * numRows + row ) * numCols + col];
+        }
         byte metaVal = metaValue(key);
         meta |= metaVal;
         if (metaVal == 0) {
