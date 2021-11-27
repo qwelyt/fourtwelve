@@ -34,7 +34,8 @@ module cherrySwitch(){
 	// Lib: Cherry MX switch - reference
 	// Download here: https://www.thingiverse.com/thing:421524
 	//  p=cherrySize/2+0.53;
-	#translate([cherryCutOutSize/1.5,cherryCutOutSize/1.5,13.32])
+	translate([cherryCutOutSize/1.5,cherryCutOutSize/1.5,13.32])
+    color([0.3,0.8,0.3])
 		import("switch_mx.stl");
 }
 module cherryCap(x=cherryCutOutSize/1.36,y=cherryCutOutSize/1.36,z=4, capSize=1, homing=false,rotateCap=false){

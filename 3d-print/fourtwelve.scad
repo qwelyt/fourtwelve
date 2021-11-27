@@ -1,13 +1,13 @@
 use <lib.scad>
 include <settings.scad>
 
-include <version1.scad>
-//include <version2.scad>
+//include <version1.scad>
+include <version2.scad>
   
 
 showSwitchCut=true;
 showSwitch=true;
-showKeyCap=false;
+showKeyCap=true;
 showSpaceBox=false;
 fullboard=true;
 
@@ -18,7 +18,10 @@ printerSize=[140,140,140];
 
 
 translate([0,0,0]){
-  half();
+  difference(){
+    half();
+    cube(printerSize);
+  }
 }
 
 if(showPrintBox)#cube(printerSize);
