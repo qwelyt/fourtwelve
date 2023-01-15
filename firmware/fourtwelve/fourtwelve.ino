@@ -30,14 +30,14 @@ byte keys[layers][numRows][numCols] = {
   {
     {   Key::TAB    , Key::Q      , Key::W         , Key::E     , Key::R     , Key::T      , Key::Y       , Key::U       , Key::I       , Key::O       , Key::P         , Key::OBRAKET   }
     , { Key::ESC    , Key::A      , Key::S         , Key::D     , Key::F     , Key::G      , Key::H       , Key::J       , Key::K       , Key::L       , Key::COLON     , Key::QUOTE     }
-    , { Key::L_SHFT , Key::Z      , Key::X         , Key::C     , Key::V     , Key::B      , Key::N       , Key::M       , Key::COMMA   , Key::DOT     , Key::SLASH     , Key::BACKSPACE }
+    , { Key::L_SHFT , Key::Z      , Key::X         , Key::C     , Key::V     , Key::B      , Key::N       , Key::M       , Key::COMMA   , Key::DOT     , Key::SLASH     , Key::R_SHFT    }
     , { Key::L_CTRL , Key::L_SUPR , Key::BS_N_PIPE , Key::L_ALT , MOD::Lower , Key::SPACE  , Key::RETURN  , MOD::Raise   , Key::R_ALT   , Key::MENU    , Key::R_SUPR    , Key::R_CTRL    }
   }
   // 1 Lower
   , {
     {   Key::K1     , Key::K2     , Key::K3        , Key::K4    , Key::K5    , Key::K6     , Key::K7      , Key::K8      , Key::K9      , Key::K0      , Key::OBRAKET   , Key::CBRAKET   }
     , { Key::ESC    , Key::NONE   , Key::NONE      , Key::NONE  , Key::NONE  , Key::NONE   , Key::ARROW_L , Key::ARROW_D , Key::ARROW_U , Key::ARROW_R , Key::TILDE     , Key::EQUAL     }
-    , { Key::L_SHFT , Key::NONE   , Key::NONE      , Key::NONE  , Key::NONE  , Key::NONE   , Key::NONE    , Key::NONE    , Key::NONE    , Key::NONE    , Key::NONE      , Key::DELETE    }
+    , { Key::L_SHFT , Key::NONE   , Key::NONE      , Key::NONE  , Key::NONE  , Key::NONE   , Key::NONE    , Key::NONE    , Key::NONE    , Key::NONE    , Key::NONE      , Key::BACKSPACE }
     , { Key::L_CTRL , Key::L_SUPR , Key::GACC      , Key::L_ALT , MOD::Lower , Key::SPACE  , Key::RETURN  , MOD::Raise   , Key::R_ALT   , Key::MENU    , Key::R_SUPR    , Key::R_CTRL    }
   }
   // 2 Raise
@@ -51,7 +51,7 @@ byte keys[layers][numRows][numCols] = {
   , {
     {   Key::NONE   , Key::NONE   , Key::NONE      , Key::NONE  , Key::NONE  , Key::NONE   , Key::NONE    , Key::NONE    , Key::NONE    , Key::NONE    , Key::NONE      , Key::NONE      }
     , { Key::ESC    , Key::NONE   , Key::NONE      , Key::NONE  , Key::NONE  , Key::NONE   , Key::MUTE    , Key::VOL_DN  , Key::VOL_UP  , Key::NONE    , Key::NONE      , Key::NONE      }
-    , { Key::L_SHFT , Key::NONE   , Key::NONE      , Key::NONE  , Key::NONE  , Key::NONE   , Key::PLAY    , Key::PREV    , Key::NEXT    , Key::NONE    , Key::NONE      , Key::NONE      }
+    , { Key::L_SHFT , Key::NONE   , Key::NONE      , Key::NONE  , Key::NONE  , Key::NONE   , Key::PLAY    , Key::PREV    , Key::NEXT    , Key::NONE    , Key::NONE      , Key::R_SHFT    }
     , { Key::L_CTRL , Key::L_SUPR , Key::NONE      , Key::L_ALT , MOD::Lower , Key::SPACE  , Key::RETURN  , MOD::Raise   , Key::R_ALT   , Key::MENU    , Key::R_SUPR    , Key::R_CTRL    }
   }
 };
